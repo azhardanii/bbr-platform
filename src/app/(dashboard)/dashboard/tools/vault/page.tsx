@@ -8,16 +8,27 @@ export default function VaultPage() {
   const [files, setFiles] = useState<any[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [jenjang, setJenjang] = useState<string>("S1");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const saved = localStorage.getItem("bbr_vault_files");
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        parsed.sort((a: any, b: any) => b.timestamp - a.timestamp);
-        setFiles(parsed);
-      } catch (e) {}
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("bbr_vault_files");
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          parsed.sort((a: any, b: any) => b.timestamp - a.timestamp);
+          setFiles(parsed);
+        } catch (e) { }
+      }
+      
+      const ob = localStorage.getItem("bbr_onboarding");
+      if (ob) {
+        try {
+          const parsedOb = JSON.parse(ob);
+          if (parsedOb.jenjang) setJenjang(parsedOb.jenjang);
+        } catch (e) {}
+      }
     }
   }, []);
 
@@ -31,7 +42,7 @@ export default function VaultPage() {
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement> | React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-    
+
     let uploadedFile: File | null = null;
     if ('dataTransfer' in e) {
       if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
@@ -65,6 +76,14 @@ export default function VaultPage() {
     }
   };
 
+  const getLabel = () => {
+    if (jenjang === "S2") return "Tesis";
+    if (jenjang === "S3") return "Disertasi";
+    return "Skripsi";
+  };
+
+  const label = getLabel();
+
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 pb-10">
       <Link href="/dashboard/tools" className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--color-text-secondary)] hover:text-[var(--color-brand-600)] transition-colors mb-2">
@@ -72,12 +91,12 @@ export default function VaultPage() {
       </Link>
 
       <div>
-        <h1 className="font-display font-bold text-3xl text-[var(--color-text-primary)]">Vault Skripsi</h1>
-        <p className="text-[var(--color-text-secondary)] mt-2">Simpan draf skripsimu di sini agar rapi. File yang paling baru akan selalu jadi versi utama.</p>
+        <h1 className="font-display font-bold text-3xl text-[var(--color-text-primary)] uppercase">{label}-ku</h1>
+        <p className="text-[var(--color-text-secondary)] mt-2">Simpan draf {label.toLowerCase()} di sini agar rapi. File yang paling baru akan selalu jadi versi utama.</p>
       </div>
 
       {/* Upload Zone */}
-      <div 
+      <div
         className={`border-2 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center text-center transition-all bg-[var(--color-bg-surface)]
           ${isDragging ? 'border-[var(--color-brand-500)] bg-[var(--color-brand-50)] scale-[1.02]' : 'border-[var(--color-bg-muted)] hover:border-[var(--color-brand-300)]'}`}
         onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
@@ -93,17 +112,17 @@ export default function VaultPage() {
         <p className="text-sm text-[var(--color-text-secondary)] mb-6 max-w-sm">
           Tarik file Word/PDF kamu ke area ini, atau klik tombol di bawah untuk memilih file. (Simulasi: file tidak benar-benar diunggah ke server)
         </p>
-        <button 
+        <button
           onClick={() => fileInputRef.current?.click()}
           disabled={isUploading}
           className="px-6 py-2.5 bg-[var(--color-brand-600)] text-white font-semibold rounded-xl hover:bg-[var(--color-brand-500)] transition-colors disabled:opacity-50 shadow-sm"
         >
           Pilih File Skripsi
         </button>
-        <input 
-          type="file" 
-          ref={fileInputRef} 
-          className="hidden" 
+        <input
+          type="file"
+          ref={fileInputRef}
+          className="hidden"
           accept=".doc,.docx,.pdf"
           onChange={handleFileUpload}
         />

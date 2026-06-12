@@ -6,6 +6,14 @@ import { FileText, Download, Clock } from "lucide-react";
 
 export default function VaultWidget() {
   const [latestFile, setLatestFile] = useState<any>(null);
+  const [jenjang, setJenjang] = useState<string>("S1");
+
+  const getLabel = () => {
+    if (jenjang === "S2") return "Tesis";
+    if (jenjang === "S3") return "Disertasi";
+    return "Skripsi";
+  };
+  const label = getLabel();
 
   useEffect(() => {
     // Listen for updates from the vault page
@@ -22,6 +30,14 @@ export default function VaultWidget() {
             setLatestFile(null);
           }
         } catch (e) { }
+      }
+
+      const ob = localStorage.getItem("bbr_onboarding");
+      if (ob) {
+        try {
+          const parsedOb = JSON.parse(ob);
+          if (parsedOb.jenjang) setJenjang(parsedOb.jenjang);
+        } catch (e) {}
       }
     };
 
@@ -42,9 +58,9 @@ export default function VaultWidget() {
             <FileText size={24} />
           </div>
           <div>
-            <h3 className="font-semibold text-[var(--color-text-primary)]">Belum ada draf skripsi</h3>
+            <h3 className="font-semibold text-[var(--color-text-primary)]">Belum ada draf {getLabel().toLowerCase()}</h3>
             <p className="text-sm text-[var(--color-text-secondary)] mt-1">
-              Amankan file skripsimu agar tidak berantakan dengan penamaan kacau kayak gini: "revisi_final_banget", "revisi_fix_fixx_fixx", "revisi_paling_terakhir".
+              Amankan file {getLabel().toLowerCase()}mu agar tidak berantakan dengan penamaan kacau kayak gini: "revisi_final_banget", "revisi_fix_fixx_fixx", "revisi_paling_terakhir".
             </p>
           </div>
         </div>
@@ -65,7 +81,7 @@ export default function VaultWidget() {
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="font-semibold text-lg text-[var(--color-text-primary)]">Draf Skripsi Terkini</h2>
+        <h2 className="font-semibold text-lg text-[var(--color-text-primary)]">Draf {label} Terkini</h2>
         <Link href="/dashboard/tools/vault" className="text-sm font-semibold text-[var(--color-brand-600)] hover:underline">
           Lihat Riwayat &rarr;
         </Link>

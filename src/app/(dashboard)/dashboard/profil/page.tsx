@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { User, Mail, Shield, LogOut, Video, Link as LinkIcon, Copy, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 
@@ -12,6 +12,36 @@ export default function ProfilPage() {
     navigator.clipboard.writeText("https://belajarbarengroselini.com/ref/BBR-MHS-2024");
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+  const [userData, setUserData] = useState<any>({ namaLengkap: "Mahasiswa", jenjang: "S1" });
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState({ namaLengkap: "", jenjang: "S1" });
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const ob = localStorage.getItem("bbr_onboarding");
+      if (ob) {
+        try {
+          const parsed = JSON.parse(ob);
+          setUserData(parsed);
+          setEditForm({ namaLengkap: parsed.namaLengkap || "", jenjang: parsed.jenjang || "S1" });
+        } catch (e) {}
+      }
+    }
+  }, []);
+
+  const handleSaveProfile = () => {
+    const ob = localStorage.getItem("bbr_onboarding");
+    let parsed = {};
+    if (ob) {
+      try { parsed = JSON.parse(ob); } catch (e) {}
+    }
+    const updated = { ...parsed, ...editForm };
+    localStorage.setItem("bbr_onboarding", JSON.stringify(updated));
+    setUserData(updated);
+    setIsEditing(false);
+    // Dispatch event so other components (like VaultWidget) can update
+    window.dispatchEvent(new Event("storage"));
   };
 
   return (
@@ -39,10 +69,59 @@ export default function ProfilPage() {
             <User size={48} />
           </div>
           
-          <h2 className="text-2xl font-bold text-[var(--color-text-primary)] mb-1">Mahasiswa Tingkat Akhir</h2>
-          <p className="text-[var(--color-text-secondary)] mb-8 flex items-center gap-2">
-            <Mail size={16} /> mahasiswa@kampus.ac.id
-          </p>
+          {!isEditing ? (
+            <>
+              <h2 className="text-2xl font-bold text-[var(--color-text-primary)] mb-1 text-center">{userData.namaLengkap}</h2>
+              <p className="text-[var(--color-brand-600)] font-semibold mb-2">{userData.jenjang}</p>
+              <p className="text-[var(--color-text-secondary)] mb-6 flex items-center gap-2 text-center">
+                <Mail size={16} /> {userData.namaLengkap.toLowerCase().replace(/\s+/g, '')}@kampus.ac.id
+              </p>
+              <button 
+                onClick={() => setIsEditing(true)}
+                className="mb-8 px-6 py-2 bg-[var(--color-bg-muted)] text-[var(--color-text-primary)] font-semibold rounded-lg hover:bg-gray-200 transition-colors"
+              >
+                Ubah Profil
+              </button>
+            </>
+          ) : (
+            <div className="w-full max-w-sm mb-8 space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-[var(--color-text-body)] mb-1">Nama Panggilan</label>
+                <input 
+                  type="text" 
+                  value={editForm.namaLengkap}
+                  onChange={e => setEditForm({...editForm, namaLengkap: e.target.value})}
+                  className="w-full p-3 border-2 border-[var(--color-bg-muted)] rounded-lg focus:border-[var(--color-brand-600)] outline-none" 
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-[var(--color-text-body)] mb-1">Jenjang</label>
+                <select 
+                  value={editForm.jenjang}
+                  onChange={e => setEditForm({...editForm, jenjang: e.target.value})}
+                  className="w-full p-3 border-2 border-[var(--color-bg-muted)] rounded-lg focus:border-[var(--color-brand-600)] outline-none bg-white"
+                >
+                  <option>S1</option>
+                  <option>S2</option>
+                  <option>S3</option>
+                </select>
+              </div>
+              <div className="flex gap-2 pt-2">
+                <button 
+                  onClick={() => setIsEditing(false)}
+                  className="flex-1 py-2 bg-[var(--color-bg-muted)] text-[var(--color-text-primary)] font-semibold rounded-lg hover:bg-gray-200 transition-colors"
+                >
+                  Batal
+                </button>
+                <button 
+                  onClick={handleSaveProfile}
+                  className="flex-1 py-2 bg-[var(--color-brand-600)] text-white font-semibold rounded-lg hover:bg-[var(--color-brand-500)] transition-colors"
+                >
+                  Simpan
+                </button>
+              </div>
+            </div>
+          )}
 
           <div className="w-full space-y-4">
             <div className="p-4 rounded-xl border border-[var(--color-bg-muted)] bg-white flex items-center justify-between">
@@ -56,7 +135,7 @@ export default function ProfilPage() {
               <span className="px-3 py-1 bg-[#F3E8FF] text-[#7C3AED] border border-[#DDD6FE] text-xs font-bold rounded-full">SUMMIT</span>
             </div>
             
-            <Link href="/login">
+            <Link href="/login" className="block">
               <button className="w-full py-3 mt-4 bg-red-50 text-red-600 font-semibold rounded-lg hover:bg-red-100 transition-colors flex items-center justify-center gap-2 border border-red-200">
                 <LogOut size={18} /> Keluar Akun
               </button>

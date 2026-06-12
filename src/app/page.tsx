@@ -20,7 +20,7 @@ export default function Home() {
         </nav>
         <Link 
           href="/dashboard"
-          className="px-6 py-2.5 bg-[var(--color-brand-600)] text-white text-sm font-semibold rounded-full hover:bg-[var(--color-brand-500)] transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5"
+          className="hidden md:flex px-6 py-2.5 bg-[var(--color-brand-600)] text-white text-sm font-semibold rounded-full hover:bg-[var(--color-brand-500)] transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5"
         >
           Masuk
         </Link>

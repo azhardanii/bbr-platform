@@ -86,14 +86,13 @@ Instruksi Simulasi Sidang:
               <Sword size={24} />
             </div>
             <div>
-              <h3 className="font-bold text-amber-900 group-hover:text-amber-700 transition-colors">Masuk ke Arena Sidang (Bank Soal)</h3>
               <p className="text-sm text-amber-800 mt-0.5">
                 Belum siap simulasi? Pelajari dulu bocoran 200+ pola pertanyaan jebakan dosen penguji.
               </p>
             </div>
           </div>
           <div className="w-full sm:w-auto px-6 py-2.5 bg-amber-600 text-white font-semibold rounded-xl flex items-center justify-center gap-2 group-hover:bg-amber-500 transition-colors shadow-sm shrink-0">
-            Lihat Bocoran <ChevronRight size={18} />
+            Masuk ke Arena Sidang <ChevronRight size={18} />
           </div>
         </div>
       </Link>
@@ -170,8 +169,8 @@ Instruksi Simulasi Sidang:
             {messages.filter(m => m.role !== 'system' && m.id !== 'user-1').map(m => (
               <div key={m.id} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                 <div className={`max-w-[80%] p-3 rounded-xl ${m.role === 'user'
-                    ? 'bg-[var(--color-brand-600)] text-white rounded-br-none'
-                    : 'bg-[var(--color-bg-surface)] text-[var(--color-text-primary)] border border-[var(--color-bg-muted)] rounded-bl-none'
+                  ? 'bg-[var(--color-brand-600)] text-white rounded-br-none'
+                  : 'bg-[var(--color-bg-surface)] text-[var(--color-text-primary)] border border-[var(--color-bg-muted)] rounded-bl-none'
                   }`}>
                   <div className="text-xs opacity-70 mb-1 font-semibold">{m.role === 'user' ? 'Anda (Mahasiswa)' : 'Dosen Penguji'}</div>
                   <div className="whitespace-pre-wrap text-sm">{m.content}</div>
