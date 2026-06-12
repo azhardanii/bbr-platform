@@ -1,15 +1,16 @@
+"use client";
+
 import Link from "next/link";
 import { FileSearch, Type, Network, Calculator } from "lucide-react";
-
-export const metadata = {
-  title: "Tools AI - BBR Platform",
-};
+import { useJenjang } from "@/hooks/useJenjang";
 
 export default function ToolsPage() {
+  const { labelLower } = useJenjang();
+
   const tools = [
     {
       title: "Judul Finder & Checker",
-      desc: "Temukan ide atau validasi judul skripsimu menggunakan AI.",
+      desc: `Temukan ide atau validasi judul ${labelLower}mu menggunakan AI.`,
       icon: FileSearch,
       href: "/dashboard/tools/judul-finder",
       color: "text-blue-600",
@@ -33,7 +34,7 @@ export default function ToolsPage() {
     },
     {
       title: "Kompas Statistik",
-      desc: "Pilih metode analisis data yang tepat untuk skripsimu.",
+      desc: `Pilih metode analisis data yang tepat untuk ${labelLower}mu.`,
       icon: Calculator,
       href: "/dashboard/tools/statistik",
       color: "text-orange-600",

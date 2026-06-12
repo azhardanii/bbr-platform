@@ -4,8 +4,10 @@ import { useState } from "react";
 import Link from "next/link";
 import { Search, Loader2, ArrowLeft } from "lucide-react";
 import { useCompletion } from "ai/react";
+import { useJenjang } from "@/hooks/useJenjang";
 
 export default function JudulFinderPage() {
+  const { labelLower } = useJenjang();
   const [formData, setFormData] = useState({
     jurusan: "",
     topik: "",
@@ -16,6 +18,7 @@ export default function JudulFinderPage() {
 
   const { completion, complete, isLoading, error } = useCompletion({
     api: "/api/ai/judul",
+    body: { jenjang: labelLower }
   });
 
   const handleGenerate = async () => {
@@ -24,8 +27,8 @@ export default function JudulFinderPage() {
       return;
     }
 
-    const generatedPrompt = `Saya mahasiswa tingkat akhir yang sedang mencari judul skripsi.
-Mohon bantu saya merumuskan 3 alternatif judul skripsi yang menarik, akademis, dan dapat diteliti berdasarkan informasi berikut:
+    const generatedPrompt = `Saya mahasiswa tingkat akhir yang sedang mencari judul ${labelLower}.
+Mohon bantu saya merumuskan 3 alternatif judul ${labelLower} yang menarik, akademis, dan dapat diteliti berdasarkan informasi berikut:
 
 Jurusan/Program Studi: ${formData.jurusan || "Umum"}
 Topik/Minat Kajian: ${formData.topik}
@@ -51,7 +54,7 @@ Berikan respons dalam bahasa Indonesia yang baku namun mudah dipahami.`;
       </Link>
       <div>
         <h1 className="font-display font-bold text-3xl text-[var(--color-text-primary)]">Judul Finder & Checker</h1>
-        <p className="text-[var(--color-text-secondary)] mt-2">Temukan inspirasi judul skripsi atau validasi judul yang sudah kamu punya menggunakan AI.</p>
+        <p className="text-[var(--color-text-secondary)] mt-2">Temukan inspirasi judul {labelLower} atau validasi judul yang sudah kamu punya menggunakan AI.</p>
       </div>
 
       <div className="bg-[var(--color-bg-surface)] border border-[var(--color-bg-muted)] p-6 rounded-2xl shadow-sm">

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Check } from "lucide-react";
+import { useJenjang } from "@/hooks/useJenjang";
 
 export default function ProgressTracker() {
   const [progress, setProgress] = useState([
@@ -32,10 +33,12 @@ export default function ProgressTracker() {
     localStorage.setItem("bbr_progress", JSON.stringify(newProgress));
   };
 
+  const { label } = useJenjang();
+
   return (
     <div className="bg-[var(--color-bg-surface)] border border-[var(--color-bg-muted)] p-5 md:p-6 rounded-2xl shadow-sm">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="font-semibold text-lg text-[var(--color-text-primary)]">Progress Skripsi</h2>
+        <h2 className="font-semibold text-lg text-[var(--color-text-primary)]">Progress {label}</h2>
         <span className="text-xs font-medium text-[var(--color-brand-600)] bg-[var(--color-brand-100)] px-2 py-1 rounded-full">Ketuk bar untuk update</span>
       </div>
       <div className="space-y-5">

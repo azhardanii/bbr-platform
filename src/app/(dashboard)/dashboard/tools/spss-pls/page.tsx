@@ -4,8 +4,10 @@ import { useState } from "react";
 import Link from "next/link";
 import { BarChart, Loader2, Play, ArrowLeft } from "lucide-react";
 import { useCompletion } from "ai/react";
+import { useJenjang } from "@/hooks/useJenjang";
 
 export default function SPSSPage() {
+  const { labelLower } = useJenjang();
   const [formData, setFormData] = useState({
     software: "SPSS",
     jenisUji: "Uji T (Parsial)",
@@ -16,6 +18,7 @@ export default function SPSSPage() {
 
   const { completion, complete, isLoading, error } = useCompletion({
     api: "/api/ai/spss",
+    body: { jenjang: labelLower }
   });
 
   const generateInterpretation = () => {

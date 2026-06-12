@@ -37,7 +37,7 @@ export default function Home() {
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--color-brand-400)] opacity-75"></span>
             <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[var(--color-brand-600)]"></span>
           </span>
-          Platform AI Bimbingan Skripsi
+          Platform AI Bimbingan Tugas Akhir
         </div>
         
         <h1 className="relative z-10 max-w-4xl text-5xl md:text-7xl font-display font-extrabold text-[var(--color-text-primary)] tracking-tight leading-[1.1] mb-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -51,7 +51,7 @@ export default function Home() {
         </h1>
         
         <p className="relative z-10 max-w-2xl text-lg md:text-xl text-[var(--color-text-secondary)] mb-10 leading-relaxed animate-in fade-in slide-in-from-bottom-6 duration-1000">
-          Asisten pintar yang membantumu menemukan judul, memparafrase kalimat akademik, dan melatih presentasi sidang skripsi.
+          Asisten pintar yang membantumu menemukan judul, memparafrase kalimat akademik, dan melatih presentasi sidang tugas akhir.
         </p>
         
         <div className="relative z-10 flex flex-col sm:flex-row items-center gap-4 animate-in fade-in slide-in-from-bottom-8 duration-1000">
@@ -78,7 +78,7 @@ export default function Home() {
             </div>
             <h3 className="font-bold text-2xl text-[var(--color-text-primary)] mb-3">Judul Finder</h3>
             <p className="text-[var(--color-text-secondary)] leading-relaxed">
-              Temukan dan validasi ide judul skripsi yang relevan dan minim revisi dari dosen pembimbing.
+              Temukan dan validasi ide judul tugas akhir yang relevan dan minim revisi dari dosen pembimbing.
             </p>
           </div>
           

@@ -5,11 +5,11 @@ export const maxDuration = 30;
 
 export async function POST(req: Request) {
   try {
-    const { prompt } = await req.json();
+    const { prompt, jenjang = "skripsi" } = await req.json();
 
     const result = await streamText({
       model: google("gemini-1.5-flash"),
-      system: "Anda adalah ahli statistika dan analisis data kuantitatif/kualitatif yang berpengalaman dalam membimbing metodologi penelitian skripsi.",
+      system: `Anda adalah ahli statistika dan analisis data kuantitatif/kualitatif yang berpengalaman dalam membimbing metodologi penelitian ${jenjang}.`,
       prompt,
     });
 

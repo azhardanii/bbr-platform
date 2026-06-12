@@ -5,11 +5,11 @@ export const maxDuration = 30; // Allow longer duration for AI response
 
 export async function POST(req: Request) {
   try {
-    const { prompt } = await req.json();
+    const { prompt, jenjang = "skripsi" } = await req.json();
 
     const result = await streamText({
       model: google("gemini-1.5-flash"),
-      system: "Anda adalah dosen pembimbing akademik yang sangat ahli dalam menyusun judul skripsi untuk mahasiswa tingkat akhir di Indonesia.",
+      system: `Anda adalah dosen pembimbing akademik yang sangat ahli dalam menyusun judul ${jenjang} untuk mahasiswa tingkat akhir di Indonesia.`,
       prompt,
     });
 

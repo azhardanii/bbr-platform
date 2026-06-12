@@ -3,56 +3,59 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { CheckSquare, Square, ChevronDown, ChevronUp, ArrowLeft } from "lucide-react";
-
-const CHECKLIST_DATA = [
-  {
-    bab: 1,
-    title: "Pendahuluan",
-    items: [
-      { id: "1.1", text: "Latar belakang memuat data empiris/fenomena gap yang kuat (maksimal 3-5 tahun terakhir)", desc: "Buka halaman awal Bab 1. Cari paragraf yang menyajikan data statistik angka atau kutipan berita terkini. Pastikan tahun datanya tidak lebih tua dari 5 tahun terakhir." },
-      { id: "1.2", text: "Rumusan masalah sinkron dengan tujuan penelitian", desc: "Sandingkan bagian Rumusan Masalah (pertanyaan) dengan Tujuan Penelitian (pernyataan). Jumlah poinnya harus persis sama (1-to-1 mapping)." },
-      { id: "1.3", text: "Manfaat penelitian mencakup aspek teoretis dan praktis", desc: "Pastikan ada sub-judul eksplisit 'Manfaat Teoretis' (untuk akademis) dan 'Manfaat Praktis' (untuk instansi/masyarakat)." }
-    ]
-  },
-  {
-    bab: 2,
-    title: "Tinjauan Pustaka",
-    items: [
-      { id: "2.1", text: "Grand theory dijelaskan relevansinya dengan variabel penelitian", desc: "Cari bagian teori utama. Pastikan ada paragraf yang secara gamblang menjelaskan alasan mengapa teori tersebut cocok membedah masalah penelitian ini." },
-      { id: "2.2", text: "Penelitian terdahulu disajikan dalam bentuk matriks/tabel mapping", desc: "Cek keberadaan tabel yang merangkum minimal 5 jurnal terdahulu: nama peneliti, tahun, judul, hasil, dan letak PERBEDAANNYA dengan skripsi Anda." },
-      { id: "2.3", text: "Kerangka konseptual memuat semua variabel dan arah hubungan dengan jelas", desc: "Lihat gambar bagan Anda. Pastikan jumlah kotaknya sesuai dengan variabel yang diteliti dan arah panahnya logis (dari X ke Y)." }
-    ]
-  },
-  {
-    bab: 3,
-    title: "Metode Penelitian",
-    items: [
-      { id: "3.1", text: "Populasi dan sampel didefinisikan beserta teknik samplingnya", desc: "Pastikan ada angka spesifik total sampel dan sebutkan rumusnya (misal: Slovin/Hair) beserta sitasi sumber rujukannya." },
-      { id: "3.2", text: "Definisi operasional variabel mencakup indikator dan skala pengukuran", desc: "Cek tabel definisi operasional. Wajib memuat kolom Konsep Variabel, Indikator Pengukuran, dan jenis Skala (Ordinal/Nominal/Interval/Rasio)." },
-      { id: "3.3", text: "Teknik analisis data sinkron dengan hipotesis yang diajukan", desc: "Cek kesesuaian alat uji: Jika hipotesis menguji 'pengaruh', pastikan ada analisis Regresi. Jika 'perbedaan', pastikan ada Uji Beda (T-test/ANOVA)." }
-    ]
-  },
-  {
-    bab: 4,
-    title: "Hasil dan Pembahasan",
-    items: [
-      { id: "4.1", text: "Karakteristik responden/objek disajikan secara komprehensif", desc: "Pastikan ada pie-chart atau tabel distribusi frekuensi demografi responden (usia, gender, jabatan) di awal Bab 4." },
-      { id: "4.2", text: "Hasil uji asumsi klasik/prasyarat terpenuhi (untuk penelitian kuantitatif)", desc: "Pastikan hasil Normalitas, Multikolinearitas, dan Heteroskedastisitas dilampirkan dan semua keterangannya 'Lolos/Memenuhi Syarat'." },
-      { id: "4.3", text: "Pembahasan membandingkan temuan dengan penelitian terdahulu secara kritis", desc: "Pada setiap paragraf analisis hasil hipotesis, WAJIB ada kalimat penguat: 'Hasil ini sejalan/berlawanan dengan penelitian Si A (Tahun)...'." }
-    ]
-  },
-  {
-    bab: 5,
-    title: "Kesimpulan dan Saran",
-    items: [
-      { id: "5.1", text: "Kesimpulan menjawab rumusan masalah secara langsung", desc: "Bandingkan isi kesimpulan dengan rumusan masalah di Bab 1. Jangan sertakan tabel output atau angka t-hitung lagi di bab ini." },
-      { id: "5.2", text: "Saran bersifat aplikatif, spesifik, dan tidak klise", desc: "Hindari kata normatif 'diharapkan lebih baik'. Berikan saran konkrit: 'Instansi X sebaiknya mengubah jam kerja menjadi Y untuk mengatasi Z'." },
-      { id: "5.3", text: "Keterbatasan penelitian disebutkan dengan jujur", desc: "Tuliskan kelemahan metode atau kendala data yang tidak bisa Anda cover agar bisa menjadi referensi riset lanjutan bagi pembaca." }
-    ]
-  }
-];
+import { useJenjang } from "@/hooks/useJenjang";
 
 export default function AntiRevisiPage() {
+  const { labelLower } = useJenjang();
+
+  const CHECKLIST_DATA = [
+    {
+      bab: 1,
+      title: "Pendahuluan",
+      items: [
+        { id: "1.1", text: "Latar belakang memuat data empiris/fenomena gap yang kuat (maksimal 3-5 tahun terakhir)", desc: "Buka halaman awal Bab 1. Cari paragraf yang menyajikan data statistik angka atau kutipan berita terkini. Pastikan tahun datanya tidak lebih tua dari 5 tahun terakhir." },
+        { id: "1.2", text: "Rumusan masalah sinkron dengan tujuan penelitian", desc: "Sandingkan bagian Rumusan Masalah (pertanyaan) dengan Tujuan Penelitian (pernyataan). Jumlah poinnya harus persis sama (1-to-1 mapping)." },
+        { id: "1.3", text: "Manfaat penelitian mencakup aspek teoretis dan praktis", desc: "Pastikan ada sub-judul eksplisit 'Manfaat Teoretis' (untuk akademis) dan 'Manfaat Praktis' (untuk instansi/masyarakat)." }
+      ]
+    },
+    {
+      bab: 2,
+      title: "Tinjauan Pustaka",
+      items: [
+        { id: "2.1", text: "Grand theory dijelaskan relevansinya dengan variabel penelitian", desc: "Cari bagian teori utama. Pastikan ada paragraf yang secara gamblang menjelaskan alasan mengapa teori tersebut cocok membedah masalah penelitian ini." },
+        { id: "2.2", text: "Penelitian terdahulu disajikan dalam bentuk matriks/tabel mapping", desc: `Cek keberadaan tabel yang merangkum minimal 5 jurnal terdahulu: nama peneliti, tahun, judul, hasil, dan letak PERBEDAANNYA dengan ${labelLower} Anda.` },
+        { id: "2.3", text: "Kerangka konseptual memuat semua variabel dan arah hubungan dengan jelas", desc: "Lihat gambar bagan Anda. Pastikan jumlah kotaknya sesuai dengan variabel yang diteliti dan arah panahnya logis (dari X ke Y)." }
+      ]
+    },
+    {
+      bab: 3,
+      title: "Metode Penelitian",
+      items: [
+        { id: "3.1", text: "Populasi dan sampel didefinisikan beserta teknik samplingnya", desc: "Pastikan ada angka spesifik total sampel dan sebutkan rumusnya (misal: Slovin/Hair) beserta sitasi sumber rujukannya." },
+        { id: "3.2", text: "Definisi operasional variabel mencakup indikator dan skala pengukuran", desc: "Cek tabel definisi operasional. Wajib memuat kolom Konsep Variabel, Indikator Pengukuran, dan jenis Skala (Ordinal/Nominal/Interval/Rasio)." },
+        { id: "3.3", text: "Teknik analisis data sinkron dengan hipotesis yang diajukan", desc: "Cek kesesuaian alat uji: Jika hipotesis menguji 'pengaruh', pastikan ada analisis Regresi. Jika 'perbedaan', pastikan ada Uji Beda (T-test/ANOVA)." }
+      ]
+    },
+    {
+      bab: 4,
+      title: "Hasil dan Pembahasan",
+      items: [
+        { id: "4.1", text: "Karakteristik responden/objek disajikan secara komprehensif", desc: "Pastikan ada pie-chart atau tabel distribusi frekuensi demografi responden (usia, gender, jabatan) di awal Bab 4." },
+        { id: "4.2", text: "Hasil uji asumsi klasik/prasyarat terpenuhi (untuk penelitian kuantitatif)", desc: "Pastikan hasil Normalitas, Multikolinearitas, dan Heteroskedastisitas dilampirkan dan semua keterangannya 'Lolos/Memenuhi Syarat'." },
+        { id: "4.3", text: "Pembahasan membandingkan temuan dengan penelitian terdahulu secara kritis", desc: "Pada setiap paragraf analisis hasil hipotesis, WAJIB ada kalimat penguat: 'Hasil ini sejalan/berlawanan dengan penelitian Si A (Tahun)...'." }
+      ]
+    },
+    {
+      bab: 5,
+      title: "Kesimpulan dan Saran",
+      items: [
+        { id: "5.1", text: "Kesimpulan menjawab rumusan masalah secara langsung", desc: "Bandingkan isi kesimpulan dengan rumusan masalah di Bab 1. Jangan sertakan tabel output atau angka t-hitung lagi di bab ini." },
+        { id: "5.2", text: "Saran bersifat aplikatif, spesifik, dan tidak klise", desc: "Hindari kata normatif 'diharapkan lebih baik'. Berikan saran konkrit: 'Instansi X sebaiknya mengubah jam kerja menjadi Y untuk mengatasi Z'." },
+        { id: "5.3", text: "Keterbatasan penelitian disebutkan dengan jujur", desc: "Tuliskan kelemahan metode atau kendala data yang tidak bisa Anda cover agar bisa menjadi referensi riset lanjutan bagi pembaca." }
+      ]
+    }
+  ];
+
   const [checkedItems, setCheckedItems] = useState<Record<string, boolean>>({});
   const [expanded, setExpanded] = useState<Record<number, boolean>>({ 1: true });
 

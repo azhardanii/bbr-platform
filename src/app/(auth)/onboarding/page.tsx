@@ -108,12 +108,14 @@ export default function OnboardingPage() {
             </div>
           )}
 
-          {step === 2 && (
+          {step === 2 && (() => {
+            const jenjangLabel = formData.jenjang === "S1" ? "Skripsi" : formData.jenjang === "S2" ? "Tesis" : "Disertasi";
+            return (
             <div className="space-y-4 animate-in slide-in-from-right-4">
               <h2 className="font-display font-bold text-xl text-[var(--color-text-primary)] mb-6 flex items-center gap-2">
                 <BookOpen className="text-[var(--color-brand-600)]" /> Status Judul
               </h2>
-              <p className="text-[var(--color-text-secondary)] text-sm mb-4">Apakah kamu sudah memiliki judul skripsi / tugas akhir yang pasti?</p>
+              <p className="text-[var(--color-text-secondary)] text-sm mb-4">Apakah kamu sudah memiliki judul {jenjangLabel.toLowerCase()} yang pasti?</p>
               
               <div className="flex gap-4">
                 <label className={`flex-1 p-4 border-2 rounded-xl cursor-pointer text-center font-semibold ${formData.punyaJudul === 'Ya' ? 'border-[var(--color-brand-600)] bg-[var(--color-brand-50)] text-[var(--color-brand-600)]' : 'border-[var(--color-bg-muted)] text-[var(--color-text-body)]'}`}>
@@ -128,7 +130,7 @@ export default function OnboardingPage() {
 
               {formData.punyaJudul === 'Ya' && (
                 <div className="mt-6 animate-in fade-in">
-                  <label className="block text-sm font-semibold text-[var(--color-text-body)] mb-1">Tulis Judul Lengkapmu</label>
+                  <label className="block text-sm font-semibold text-[var(--color-text-body)] mb-1">Tulis Judul {jenjangLabel} Lengkapmu</label>
                   <textarea 
                     value={formData.judulSkripsi}
                     onChange={e => setFormData({...formData, judulSkripsi: e.target.value})}
@@ -138,7 +140,8 @@ export default function OnboardingPage() {
                 </div>
               )}
             </div>
-          )}
+          );
+          })()}
 
           {step === 3 && (
             <div className="space-y-4 animate-in slide-in-from-right-4">

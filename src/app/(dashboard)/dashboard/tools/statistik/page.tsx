@@ -4,8 +4,10 @@ import { useState } from "react";
 import Link from "next/link";
 import { Calculator, Loader2, ArrowLeft } from "lucide-react";
 import { useCompletion } from "ai/react";
+import { useJenjang } from "@/hooks/useJenjang";
 
 export default function StatistikPage() {
+  const { labelLower } = useJenjang();
   const [formData, setFormData] = useState({
     tujuan: "Mencari Pengaruh/Hubungan",
     varX: 1,
@@ -15,10 +17,11 @@ export default function StatistikPage() {
 
   const { completion, complete, isLoading, error } = useCompletion({
     api: "/api/ai/statistik",
+    body: { jenjang: labelLower }
   });
 
   const handleGenerate = async () => {
-    const generatedPrompt = `Saya sedang mengerjakan bab 3 (Metodologi) dan bab 4 (Hasil) untuk skripsi saya. 
+    const generatedPrompt = `Saya sedang mengerjakan bab 3 (Metodologi) dan bab 4 (Hasil) untuk ${labelLower} saya. 
 Mohon bantu saya menentukan dan menjelaskan alat analisis statistik yang paling tepat berdasarkan profil data berikut:
 
 1. Tujuan Analisis: ${formData.tujuan}

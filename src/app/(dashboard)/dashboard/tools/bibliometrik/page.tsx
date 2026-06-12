@@ -4,8 +4,10 @@ import { useState } from "react";
 import Link from "next/link";
 import { Network, Loader2, ArrowLeft } from "lucide-react";
 import { useCompletion } from "ai/react";
+import { useJenjang } from "@/hooks/useJenjang";
 
 export default function BibliometrikPage() {
+  const { labelLower } = useJenjang();
   const [formData, setFormData] = useState({
     keyword: "",
     tahunAwal: "2019",
@@ -15,6 +17,7 @@ export default function BibliometrikPage() {
 
   const { completion, complete, isLoading, error } = useCompletion({
     api: "/api/ai/bibliometrik",
+    body: { jenjang: labelLower }
   });
 
   const handleGenerate = async () => {
@@ -23,7 +26,7 @@ export default function BibliometrikPage() {
       return;
     }
 
-    const generatedPrompt = `Saya ingin melakukan analisis bibliometrik sederhana untuk State of the Art (SOTA) skripsi saya.
+    const generatedPrompt = `Saya ingin melakukan analisis bibliometrik sederhana untuk State of the Art (SOTA) ${labelLower} saya.
 
 Kata Kunci / Topik: ${formData.keyword}
 Rentang Waktu: ${formData.tahunAwal} - ${formData.tahunAkhir}

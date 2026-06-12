@@ -5,11 +5,11 @@ export const maxDuration = 30;
 
 export async function POST(req: Request) {
   try {
-    const { prompt } = await req.json();
+    const { prompt, jenjang = "skripsi" } = await req.json();
     const data = JSON.parse(prompt);
 
     const systemPrompt = `Anda adalah dosen statistik senior yang ahli membaca output ${data.software}. 
-Tugas Anda adalah merangkai kalimat interpretasi dari angka-angka output statistik untuk dimasukkan ke dalam Bab 4 skripsi mahasiswa.
+Tugas Anda adalah merangkai kalimat interpretasi dari angka-angka output statistik untuk dimasukkan ke dalam Bab 4 ${jenjang} mahasiswa.
 Jenis Uji: ${data.jenisUji}
 Variabel Independen (X): ${data.variabelX}
 Variabel Dependen (Y): ${data.variabelY}

@@ -4,8 +4,10 @@ import { useState } from "react";
 import Link from "next/link";
 import { Type, Loader2, ArrowLeft } from "lucide-react";
 import { useCompletion } from "ai/react";
+import { useJenjang } from "@/hooks/useJenjang";
 
 export default function ParafrasePage() {
+  const { label } = useJenjang();
   const [formData, setFormData] = useState({
     text: "",
     tone: "Akademik Formal",
@@ -14,6 +16,7 @@ export default function ParafrasePage() {
 
   const { completion, complete, isLoading, error } = useCompletion({
     api: "/api/ai/parafrase",
+    body: { jenjang: labelLower }
   });
 
   const handleGenerate = async () => {
@@ -76,7 +79,7 @@ ${formData.text}
                 className="w-full px-4 py-3 rounded-lg border-2 border-[var(--color-bg-muted)] focus:border-[var(--color-brand-600)] outline-none bg-white"
               >
                 <option value="Jurnal Akademik Q1">Jurnal Akademik Q1 (Sangat Formal & Ilmiah)</option>
-                <option value="Skripsi Standar">Skripsi Standar (Formal Umum)</option>
+                <option value="Standar Akademik">{label} Standar (Formal Umum)</option>
                 <option value="Sederhana">Sederhana (Lebih Mudah Dipahami Awam)</option>
                 <option value="Ringkas">Ringkas (To-the-point & Padat)</option>
                 <option value="Elaboratif">Elaboratif (Dijabarkan Lebih Panjang & Rinci)</option>

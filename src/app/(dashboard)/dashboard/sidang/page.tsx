@@ -4,11 +4,12 @@ import { useState } from "react";
 import Link from "next/link";
 import { GraduationCap, Loader2, Send, Sword, ChevronRight, ArrowLeft } from "lucide-react";
 import { useChat } from "ai/react";
+import { useJenjang } from "@/hooks/useJenjang";
 
 const PERSONAS = [
   { id: 1, emoji: '😤', name: 'Si Paling Metodologi', desc: 'Sangat ketat menanyakan alasan pemilihan metode, sampel, dan validitas data.', prompt: 'Kamu adalah dosen penguji yang sangat ketat soal metodologi penelitian. Tanyakan mahasiswa tentang alasan pemilihan metode, validitas instrumen, dan teknik sampling mereka. Gunakan nada kritis tapi akademis. Mulai dengan: "Baik, coba jelaskan kenapa kamu memilih metode kuantitatif untuk penelitian ini?"' },
   { id: 2, emoji: '📚', name: 'Si Pengabdi Teori', desc: 'Fokus pada kutipan definisi ahli dan perbandingan grand theory.', prompt: 'Kamu adalah dosen penguji yang sangat fokus pada landasan teori. Tanyakan definisi variabel dari berbagai tokoh, minta mahasiswa membandingkan teori, dan tanyakan alasan memilih teori tertentu. Mulai dengan: "Dari mana kamu mengambil definisi variabel X ini? Ada tokoh lain yang mendefinisikan berbeda?"' },
-  { id: 3, emoji: '🔍', name: 'Si Detektif', desc: 'Suka mempertanyakan kebaruan (novelty) dan urgensi topik skripsi.', prompt: 'Kamu adalah dosen penguji yang sangat peduli dengan relevansi dan urgensi penelitian. Tanyakan mengapa topik ini penting, apa yang belum dijawab oleh penelitian sebelumnya, dan apa kontribusi nyata penelitian ini. Mulai dengan: "Saya lihat sudah banyak penelitian serupa. Apa yang membedakan penelitianmu?"' },
+  { id: 3, emoji: '🔍', name: 'Si Detektif', desc: 'Suka mempertanyakan kebaruan (novelty) dan urgensi topik penelitian.', prompt: 'Kamu adalah dosen penguji yang sangat peduli dengan relevansi dan urgensi penelitian. Tanyakan mengapa topik ini penting, apa yang belum dijawab oleh penelitian sebelumnya, dan apa kontribusi nyata penelitian ini. Mulai dengan: "Saya lihat sudah banyak penelitian serupa. Apa yang membedakan penelitianmu?"' },
   { id: 4, emoji: '🧮', name: 'Si Raja Statistik', desc: 'Selalu menagih interpretasi detail dari setiap angka statistik di Bab 4.', prompt: 'Kamu adalah dosen penguji yang sangat detail soal angka dan statistik. Tanyakan interpretasi spesifik dari tabel output, minta penjelasan uji asumsi, dan tanyakan arti setiap angka dalam konteks penelitian. Mulai dengan: "Coba jelaskan angka R-square 0.67 ini artinya apa dalam penelitianmu?"' },
   { id: 5, emoji: '🗣️', name: 'Si Pencari Celah', desc: 'Gemar mencari ketidakkonsistenan antara Bab 1 dan Bab 5.', prompt: 'Kamu adalah dosen penguji yang suka mencari inkonsistensi antar bab. Bandingkan pernyataan di bab 1 dengan bab 5, cari kontradiksi antara rumusan masalah dan kesimpulan. Mulai dengan: "Di Bab 1 kamu bilang X, tapi di Bab 5 kamu menyimpulkan Y. Bisa dijelaskan?"' },
   { id: 6, emoji: '🤔', name: 'Si Praktisi', desc: 'Menuntut kelanjutan praktis dan implikasi nyata dari hasil penelitian.', prompt: 'Kamu adalah dosen penguji yang sangat tertarik pada implikasi dan kebermanfaatan penelitian. Tanyakan bagaimana hasil penelitian bisa diimplementasikan, siapa yang bisa manfaatkan, dan apa penelitian lanjutan yang relevan. Mulai dengan: "Hasil penelitianmu menarik — siapa yang seharusnya paling peduli dengan temuan ini?"' },
@@ -17,6 +18,7 @@ const PERSONAS = [
 ];
 
 export default function SidangPage() {
+  const { label, labelLower } = useJenjang();
   const [formData, setFormData] = useState({
     judul: "",
     abstrak: "",
@@ -25,6 +27,7 @@ export default function SidangPage() {
 
   const { messages, input, handleInputChange, handleSubmit, setMessages, isLoading, error } = useChat({
     api: "/api/ai/sidang",
+    body: { jenjang: labelLower }
   });
 
   const [hasStarted, setHasStarted] = useState(false);
@@ -39,8 +42,8 @@ export default function SidangPage() {
     const systemPrompt = `${selectedPersona?.prompt}
 
 
-Mahasiswa di depanmu sedang mempresentasikan skripsi dengan detail berikut:
-Judul Skripsi: ${formData.judul}
+Mahasiswa di depanmu sedang mempresentasikan ${labelLower} dengan detail berikut:
+Judul ${label}: ${formData.judul}
 Ringkasan/Abstrak: 
 """
 ${formData.abstrak}
@@ -56,7 +59,7 @@ Instruksi Simulasi Sidang:
 
     setMessages([
       { role: "system", content: systemPrompt, id: "system-1" },
-      { role: "user", content: "Halo Bapak/Ibu dosen penguji, saya siap memulai sidang skripsi saya.", id: "user-1" }
+      { role: "user", content: `Halo Bapak/Ibu dosen penguji, saya siap memulai sidang ${labelLower} saya.`, id: "user-1" }
     ]);
 
     setHasStarted(true);
@@ -75,7 +78,7 @@ Instruksi Simulasi Sidang:
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex-1">
           <h1 className="font-display font-bold text-3xl text-[var(--color-text-primary)]">Sidang Simulator</h1>
-          <p className="text-[var(--color-text-secondary)] mt-2">Latih mental dan argumenmu dengan simulasi sidang skripsi interaktif bersama AI Dosen Penguji.</p>
+          <p className="text-[var(--color-text-secondary)] mt-2">Latih mental dan argumenmu dengan simulasi sidang {labelLower} interaktif bersama AI Dosen Penguji.</p>
         </div>
       </div>
 
