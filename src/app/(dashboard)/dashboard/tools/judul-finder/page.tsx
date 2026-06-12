@@ -12,7 +12,6 @@ export default function JudulFinderPage() {
     masalah: "",
     objek: "",
     metode: "Kuantitatif",
-    metode: "Kuantitatif",
   });
 
   const { completion, complete, isLoading, error } = useCompletion({
