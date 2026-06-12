@@ -7,7 +7,7 @@ import { useCompletion } from "ai/react";
 import { useJenjang } from "@/hooks/useJenjang";
 
 export default function ParafrasePage() {
-  const { label } = useJenjang();
+  const { label, labelLower } = useJenjang();
   const [formData, setFormData] = useState({
     text: "",
     tone: "Akademik Formal",
