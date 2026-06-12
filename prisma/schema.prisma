@@ -1,0 +1,96 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id                   String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  
+  // Auth
+  email                String    @unique
+  google_id            String?
+
+  // Profil Onboarding
+  nama_lengkap         String?
+  universitas          String?
+  jenjang              String?   // s1 | s2 | s3
+  jurusan              String?
+  semester             Int?
+  punya_judul          Boolean?  @default(false)
+  judul_skripsi        String?   // NULL jika belum
+  preferred_ai         String?   // claude | chatgpt | perplexity
+  onboarding_completed Boolean?  @default(false)
+
+  // Payment & Tier
+  tier                 String    @default("spark")  // spark | drive | summit
+  payment_ref          String?
+  paid_at              DateTime? @db.Timestamptz
+  expired_at           DateTime? @db.Timestamptz    // NULL = lifetime
+
+  // Bimbingan (Summit)
+  sessions_total       Int?      @default(0)
+  sessions_used        Int?      @default(0)
+
+  // Afiliasi
+  affiliate_code       String?   @unique
+  referred_by          String?   // affiliate_code dari referrer
+
+  // Timestamps
+  created_at           DateTime? @default(now()) @db.Timestamptz
+  updated_at           DateTime? @default(now()) @db.Timestamptz
+
+  @@map("users")
+}
+
+model ChecklistProgress {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id     String    @db.Uuid
+  bab         Int       // 1–5
+  item_id     String
+  checked     Boolean?  @default(false)
+  updated_at  DateTime? @default(now()) @db.Timestamptz
+
+  @@unique([user_id, bab, item_id])
+  @@map("checklist_progress")
+}
+
+model BabProgress {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id     String    @db.Uuid
+  bab         Int       // 1–5
+  percentage  Int?      @default(0)              // 0–100
+  updated_at  DateTime? @default(now()) @db.Timestamptz
+
+  @@unique([user_id, bab])
+  @@map("bab_progress")
+}
+
+model Commission {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  affiliate_code  String
+  buyer_email     String
+  product_tier    String
+  amount          Decimal?  @db.Decimal
+  commission      Decimal?  @db.Decimal
+  rate            Decimal?  @db.Decimal           // 0.30 atau 0.50
+  status          String?   @default("pending") // pending | paid
+  created_at      DateTime? @default(now()) @db.Timestamptz
+
+  @@map("commissions")
+}
+
+model WebhookLog {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  source      String?   // lynkid
+  payload     Json?
+  status      String?
+  processed   Boolean?  @default(false)
+  created_at  DateTime? @default(now()) @db.Timestamptz
+
+  @@map("webhook_logs")
+}

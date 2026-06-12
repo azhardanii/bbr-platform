@@ -1,0 +1,430 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+.app{display:flex;width:100%;min-height:640px;background:#F5EFE3;font-family:var(--font-sans);border-radius:12px;overflow:hidden;border:0.5px solid #D4C8B8;}
+.sidebar{width:188px;background:#7B2020;display:flex;flex-direction:column;flex-shrink:0;}
+.sb-brand{padding:16px 14px 12px;border-bottom:0.5px solid rgba(255,255,255,0.12);}
+.sb-logo{display:flex;align-items:center;gap:8px;}
+.sb-logo-mark{width:30px;height:30px;background:#F5EFE3;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:500;color:#7B2020;flex-shrink:0;}
+.sb-logo-text{font-size:11px;font-weight:500;color:#FAF0E6;line-height:1.3;}
+.sb-logo-sub{font-size:9px;color:rgba(255,255,255,0.5);}
+.sb-section{padding:10px 10px 4px;font-size:9px;font-weight:500;color:rgba(255,255,255,0.4);letter-spacing:0.08em;text-transform:uppercase;}
+.sb-item{display:flex;align-items:center;gap:8px;padding:7px 10px 7px 12px;cursor:pointer;margin:1px 6px;border-radius:6px;transition:background 0.12s;}
+.sb-item:hover{background:rgba(255,255,255,0.1);}
+.sb-item.active{background:rgba(255,255,255,0.18);}
+.sb-icon{width:16px;height:16px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:9px;flex-shrink:0;}
+.sb-item-text{font-size:11px;color:rgba(255,255,255,0.85);line-height:1.3;}
+.sb-item.active .sb-item-text{color:#fff;font-weight:500;}
+.sb-paket{margin:auto 8px 10px;background:rgba(255,255,255,0.12);border-radius:8px;padding:10px;}
+.sb-paket-label{font-size:9px;color:rgba(255,255,255,0.5);margin-bottom:3px;}
+.sb-paket-name{font-size:12px;font-weight:500;color:#FAF0E6;}
+.sb-upgrade{display:block;text-align:center;font-size:10px;font-weight:500;background:#3A6B4A;color:#EBF4EE;border-radius:5px;padding:5px 8px;margin-top:7px;cursor:pointer;border:none;width:100%;}
+.main{flex:1;display:flex;flex-direction:column;min-width:0;}
+.topbar{background:#FBF7F0;border-bottom:0.5px solid #D4C8B8;padding:10px 16px;display:flex;align-items:center;gap:10px;}
+.topbar-title{font-size:14px;font-weight:500;color:#3D1A1A;flex:1;}
+.topbar-badge{font-size:10px;background:#EBF4EE;color:#2B5438;padding:3px 8px;border-radius:20px;font-weight:500;}
+.topbar-avatar{width:28px;height:28px;border-radius:50%;background:#7B2020;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:500;color:#FAF0E6;}
+.content{padding:14px 16px;flex:1;}
+.screen{display:none;}
+.screen.active{display:block;}
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px;}
+.stat{background:#FBF7F0;border:0.5px solid #D4C8B8;border-radius:8px;padding:10px 12px;}
+.stat-val{font-size:20px;font-weight:500;color:#3D1A1A;margin-bottom:2px;}
+.stat-lbl{font-size:10px;color:#8A7A6E;}
+.section-h{font-size:12px;font-weight:500;color:#3D1A1A;margin:12px 0 8px;}
+.tool-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;}
+.tool-card{background:#FBF7F0;border:0.5px solid #D4C8B8;border-radius:8px;padding:10px 12px;cursor:pointer;}
+.tool-card:hover{border-color:#A07060;}
+.tool-card-icon{width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:13px;margin-bottom:7px;}
+.tool-card-name{font-size:12px;font-weight:500;color:#3D1A1A;margin-bottom:2px;}
+.tool-card-desc{font-size:10px;color:#8A7A6E;line-height:1.4;}
+.tool-card-tag{display:inline-block;font-size:9px;padding:2px 6px;border-radius:20px;margin-top:5px;}
+.progress-bar-bg{background:#E8DDD4;border-radius:4px;height:5px;margin:8px 0 0;}
+.progress-bar-fill{height:5px;border-radius:4px;background:#3A6B4A;}
+.btn-primary{background:#7B2020;color:#FAF0E6;border:none;border-radius:7px;padding:8px 16px;font-size:12px;font-weight:500;cursor:pointer;}
+.btn-green{background:#3A6B4A;color:#EBF4EE;border:none;border-radius:7px;padding:8px 16px;font-size:12px;font-weight:500;cursor:pointer;}
+.btn-outline{background:transparent;color:#7B2020;border:0.5px solid #7B2020;border-radius:7px;padding:7px 14px;font-size:12px;cursor:pointer;}
+.quiz-opt{background:#FBF7F0;border:0.5px solid #D4C8B8;border-radius:8px;padding:10px 12px;margin-bottom:7px;cursor:pointer;font-size:12px;color:#3D1A1A;transition:border-color 0.12s;}
+.quiz-opt:hover{border-color:#7B2020;}
+.quiz-opt.picked{border-color:#7B2020;background:#F9F0EE;}
+.lock-row{display:flex;align-items:center;gap:8px;background:#FBF7F0;border:0.5px solid #D4C8B8;border-radius:8px;padding:12px;margin-bottom:10px;}
+.lock-icon{width:36px;height:36px;border-radius:8px;background:#F0E8E0;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
+.paket-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.paket-card{border-radius:10px;padding:12px;border:0.5px solid #D4C8B8;}
+.paket-feature{font-size:10px;display:flex;align-items:flex-start;gap:5px;margin-bottom:4px;line-height:1.4;}
+.breadcrumb{font-size:10px;color:#8A7A6E;margin-bottom:10px;}
+.ftag{font-size:10px;padding:4px 10px;border-radius:20px;border:0.5px solid #C8B8A8;background:transparent;color:#5C3D2E;cursor:pointer;transition:all 0.12s;}
+.ftag.on{background:#7B2020;color:#FAF0E6;border-color:#7B2020;}
+.p-card{background:#FBF7F0;border:0.5px solid #D4C8B8;border-radius:10px;overflow:hidden;cursor:pointer;transition:border-color 0.12s;margin-bottom:8px;}
+.p-card:hover{border-color:#A07060;}
+.p-card.open{border-color:#7B2020;}
+.p-card-top{padding:11px 13px 9px;display:flex;align-items:flex-start;gap:10px;}
+.p-avatar{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;}
+.p-name{font-size:13px;font-weight:500;color:#3D1A1A;}
+.p-type{font-size:10px;color:#8A7A6E;margin-top:2px;line-height:1.4;}
+.p-badge{display:inline-block;font-size:9px;padding:2px 7px;border-radius:20px;margin-top:4px;font-weight:500;}
+.p-body{padding:0 13px 12px;display:none;}
+.p-card.open .p-body{display:block;}
+.p-divider{border:none;border-top:0.5px solid #E0D4C8;margin:7px 0;}
+.mini-label{font-size:9px;font-weight:500;color:#8A7A6E;letter-spacing:0.07em;text-transform:uppercase;margin-bottom:5px;}
+.sig-row{display:flex;gap:7px;align-items:flex-start;margin-bottom:5px;}
+.sig-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0;margin-top:4px;}
+.sig-text{font-size:11px;color:#5C3D2E;line-height:1.45;}
+.tactic-box{background:#EBF4EE;border-radius:7px;padding:9px 11px;margin-top:6px;}
+.tactic-title{font-size:10px;font-weight:500;color:#2B5438;margin-bottom:4px;}
+.tactic-text{font-size:11px;color:#3A6B4A;line-height:1.5;}
+.weapons{display:flex;gap:5px;flex-wrap:wrap;margin-top:7px;}
+.weapon{font-size:10px;background:#F0E8E0;color:#5C2020;border-radius:5px;padding:3px 8px;}
+.toggle-hint{font-size:9px;color:#A09080;text-align:right;padding:0 13px 7px;}
+.p-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px;}
+.dt-node{background:#FBF7F0;border:0.5px solid #D4C8B8;border-radius:8px;padding:10px 14px;margin-bottom:8px;}
+.dt-q{font-size:12px;font-weight:500;color:#3D1A1A;margin-bottom:8px;}
+.dt-opts{display:flex;gap:6px;flex-wrap:wrap;}
+.dt-btn{background:#F0E8E0;border:none;border-radius:6px;padding:6px 12px;font-size:11px;color:#5C2020;cursor:pointer;}
+.dt-btn:hover{background:#E8D4C8;}
+.dt-btn.chosen{background:#7B2020;color:#FAF0E6;}
+.dt-result{background:#EBF4EE;border-radius:8px;padding:12px;margin-top:8px;}
+</style>
+
+<div class="app">
+  <div class="sidebar">
+    <div class="sb-brand">
+      <div class="sb-logo">
+        <div class="sb-logo-mark">BBR</div>
+        <div>
+          <div class="sb-logo-text">Belajar Bareng</div>
+          <div class="sb-logo-sub">Roselini Platform</div>
+        </div>
+      </div>
+    </div>
+    <div class="sb-section">Utama</div>
+    <div class="sb-item active" onclick="nav('dashboard',this)"><div class="sb-icon" style="background:rgba(255,255,255,0.15);">🏠</div><span class="sb-item-text">Dashboard</span></div>
+    <div class="sb-section">Sebelum Mulai</div>
+    <div class="sb-item" onclick="nav('judul',this)"><div class="sb-icon" style="background:rgba(255,255,255,0.1);">🎯</div><span class="sb-item-text">Judul Checker</span></div>
+    <div class="sb-item" onclick="nav('mager',this)"><div class="sb-icon" style="background:rgba(255,255,255,0.1);">🧠</div><span class="sb-item-text">Mager Diagnosis</span></div>
+    <div class="sb-section">Penulisan</div>
+    <div class="sb-item" onclick="nav('checklist',this)"><div class="sb-icon" style="background:rgba(255,255,255,0.1);">✅</div><span class="sb-item-text">Anti-Revisi Kit</span></div>
+    <div class="sb-item" onclick="nav('prompt',this)"><div class="sb-icon" style="background:rgba(255,255,255,0.1);">🤖</div><span class="sb-item-text">AI Prompt Pack</span></div>
+    <div class="sb-item" onclick="nav('writingos',this)"><div class="sb-icon" style="background:rgba(255,255,255,0.1);">📋</div><span class="sb-item-text">Writing OS</span></div>
+    <div class="sb-section">Data & Statistik</div>
+    <div class="sb-item" onclick="nav('ujiaoa',this)"><div class="sb-icon" style="background:rgba(255,255,255,0.1);">📊</div><span class="sb-item-text">Uji Apa?</span></div>
+    <div class="sb-item" onclick="nav('interpretasi',this)"><div class="sb-icon" style="background:rgba(255,255,255,0.1);">📄</div><span class="sb-item-text">Template Output</span></div>
+    <div class="sb-section">Sidang</div>
+    <div class="sb-item" onclick="nav('persona',this)"><div class="sb-icon" style="background:rgba(255,255,255,0.1);">👤</div><span class="sb-item-text">Persona Dosen</span></div>
+    <div class="sb-item" onclick="nav('simulator',this)"><div class="sb-icon" style="background:rgba(255,255,255,0.1);">🎤</div><span class="sb-item-text">Sidang Simulator</span></div>
+    <div class="sb-item" onclick="nav('banksoal',this)"><div class="sb-icon" style="background:rgba(255,255,255,0.1);">🗂️</div><span class="sb-item-text">Bank Soal</span></div>
+    <div class="sb-section">Soft Skills</div>
+    <div class="sb-item" onclick="nav('scriptwa',this)"><div class="sb-icon" style="background:rgba(255,255,255,0.1);">💬</div><span class="sb-item-text">Script WA Dosen</span></div>
+    <div class="sb-item" onclick="nav('mindset',this)"><div class="sb-icon" style="background:rgba(255,255,255,0.1);">🧘</div><span class="sb-item-text">Mindset Journal</span></div>
+    <div class="sb-section">Pasca Sidang</div>
+    <div class="sb-item" onclick="nav('alumni',this)"><div class="sb-icon" style="background:rgba(255,255,255,0.1);">🎓</div><span class="sb-item-text">Alumni Pack</span></div>
+    <div class="sb-paket">
+      <div class="sb-paket-label">Paket aktif</div>
+      <div class="sb-paket-name">Summit</div>
+      <button class="sb-upgrade" onclick="nav('paket',null)">Lihat semua fitur ↑</button>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="topbar">
+      <span class="topbar-title" id="topbar-title">Dashboard</span>
+      <span class="topbar-badge">Paket Summit</span>
+      <div class="topbar-avatar">A</div>
+    </div>
+    <div class="content">
+
+      <div class="screen active" id="screen-dashboard">
+        <div class="stat-grid">
+          <div class="stat"><div class="stat-val">14</div><div class="stat-lbl">Fitur aktif</div></div>
+          <div class="stat"><div class="stat-val">8</div><div class="stat-lbl">Persona dipelajari</div></div>
+          <div class="stat"><div class="stat-val">3</div><div class="stat-lbl">Sesi meeting</div></div>
+          <div class="stat"><div class="stat-val">65%</div><div class="stat-lbl">Progress skripsi</div></div>
+        </div>
+        <div class="section-h">Akses cepat</div>
+        <div class="tool-grid">
+          <div class="tool-card" onclick="nav('persona',null)">
+            <div class="tool-card-icon" style="background:#F9F0EE;">👤</div>
+            <div class="tool-card-name">Persona Dosen</div>
+            <div class="tool-card-desc">8 arketipe dosen penguji + taktik menghadapi masing-masing</div>
+            <span class="tool-card-tag" style="background:#EBF4EE;color:#2B5438;">Tersedia</span>
+          </div>
+          <div class="tool-card" onclick="nav('ujiaoa',null)">
+            <div class="tool-card-icon" style="background:#EBF4EE;">📊</div>
+            <div class="tool-card-name">Uji Apa?</div>
+            <div class="tool-card-desc">Decision tree statistik — jawab 3 pertanyaan, dapat rekomendasi</div>
+            <span class="tool-card-tag" style="background:#EBF4EE;color:#2B5438;">Tersedia</span>
+          </div>
+          <div class="tool-card" onclick="nav('judul',null)">
+            <div class="tool-card-icon" style="background:#EEF0FB;">🎯</div>
+            <div class="tool-card-name">Judul Checker</div>
+            <div class="tool-card-desc">Analisis kelayakan judul sebelum konsul ke pembimbing</div>
+            <span class="tool-card-tag" style="background:#EBF4EE;color:#2B5438;">Tersedia</span>
+          </div>
+          <div class="tool-card" onclick="nav('simulator',null)">
+            <div class="tool-card-icon" style="background:#EAF3DE;">🎤</div>
+            <div class="tool-card-name">Sidang Simulator</div>
+            <div class="tool-card-desc">Latihan sidang mandiri via AI kapan saja</div>
+            <span class="tool-card-tag" style="background:#EBF4EE;color:#2B5438;">Tersedia</span>
+          </div>
+        </div>
+        <div class="section-h" style="margin-top:14px;">Progress skripsi</div>
+        <div style="background:#FBF7F0;border:0.5px solid #D4C8B8;border-radius:8px;padding:12px 14px;">
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="font-size:11px;color:#8A7A6E;">Bab 1</span><span style="font-size:11px;color:#3A6B4A;font-weight:500;">100%</span></div>
+          <div class="progress-bar-bg"><div class="progress-bar-fill" style="width:100%;"></div></div>
+          <div style="display:flex;justify-content:space-between;margin:8px 0 4px;"><span style="font-size:11px;color:#8A7A6E;">Bab 2</span><span style="font-size:11px;color:#3A6B4A;font-weight:500;">80%</span></div>
+          <div class="progress-bar-bg"><div class="progress-bar-fill" style="width:80%;"></div></div>
+          <div style="display:flex;justify-content:space-between;margin:8px 0 4px;"><span style="font-size:11px;color:#8A7A6E;">Bab 3</span><span style="font-size:11px;color:#B07020;font-weight:500;">40%</span></div>
+          <div class="progress-bar-bg"><div class="progress-bar-fill" style="width:40%;background:#BA7517;"></div></div>
+        </div>
+      </div>
+
+      <div class="screen" id="screen-persona">
+        <div class="breadcrumb">Sidang / Persona Dosen Penguji</div>
+        <div style="background:#7B2020;border-radius:10px;padding:12px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px;">
+          <div style="width:36px;height:36px;background:rgba(255,255,255,0.15);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">🎓</div>
+          <div>
+            <div style="font-size:13px;font-weight:500;color:#FAF0E6;">8 Persona Dosen Penguji</div>
+            <div style="font-size:10px;color:rgba(255,255,255,0.6);margin-top:1px;">Kenali mereka sebelum sidang — klik kartu untuk lihat taktik</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;" id="pfilter-row">
+          <button class="ftag on" onclick="pfilter('all',this)">Semua (8)</button>
+          <button class="ftag" onclick="pfilter('tinggi',this)">Bahaya tinggi</button>
+          <button class="ftag" onclick="pfilter('sedang',this)">Bahaya sedang</button>
+          <button class="ftag" onclick="pfilter('rendah',this)">Bahaya rendah</button>
+        </div>
+        <div id="persona-grid"></div>
+      </div>
+
+      <div class="screen" id="screen-judul">
+        <div class="breadcrumb">Sebelum mulai / Judul Checker</div>
+        <div style="background:#FBF7F0;border:0.5px solid #D4C8B8;border-radius:10px;padding:14px;margin-bottom:10px;">
+          <div style="font-size:13px;font-weight:500;color:#3D1A1A;margin-bottom:4px;">Cek kelayakan judul skripsi</div>
+          <div style="font-size:11px;color:#8A7A6E;margin-bottom:12px;">Masukkan judul rencanamu, sistem akan analisis berdasarkan pola penolakan umum.</div>
+          <input id="judul-input" type="text" placeholder="Contoh: Pengaruh Media Sosial terhadap Perilaku Konsumen..." style="width:100%;margin-bottom:10px;font-size:12px;"/>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+            <select style="font-size:12px;"><option>Pilih jurusan...</option><option>Manajemen</option><option>Akuntansi</option><option>Psikologi</option><option>Komunikasi</option></select>
+            <select style="font-size:12px;"><option>Metode penelitian...</option><option>Kuantitatif</option><option>Kualitatif</option><option>Mixed Method</option></select>
+          </div>
+          <button class="btn-primary" onclick="showJudulResult()">Analisis Judul →</button>
+        </div>
+        <div id="judul-result" style="display:none;">
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px;">
+            <div class="stat"><div class="stat-val" style="color:#3A6B4A;">72</div><div class="stat-lbl">Skor kelayakan</div></div>
+            <div class="stat"><div class="stat-val" style="color:#B07020;">2</div><div class="stat-lbl">Perlu diperbaiki</div></div>
+            <div class="stat"><div class="stat-val" style="color:#3A6B4A;">3</div><div class="stat-lbl">Sudah oke</div></div>
+          </div>
+          <div style="background:#FBF7F0;border:0.5px solid #D4C8B8;border-radius:8px;padding:12px 14px;">
+            <div style="font-size:12px;font-weight:500;color:#3D1A1A;margin-bottom:8px;">Hasil analisis</div>
+            <div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:7px;"><span style="font-size:14px;">✅</span><div><div style="font-size:11px;font-weight:500;color:#2B5438;">Variabel jelas</div><div style="font-size:10px;color:#8A7A6E;">Judul memiliki variabel X dan Y yang teridentifikasi</div></div></div>
+            <div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:7px;"><span style="font-size:14px;">⚠️</span><div><div style="font-size:11px;font-weight:500;color:#8A5010;">Terlalu umum</div><div style="font-size:10px;color:#8A7A6E;">Tambahkan konteks spesifik: lokasi, populasi, atau periode waktu</div></div></div>
+            <div style="background:#EBF4EE;border-radius:6px;padding:8px 10px;margin-top:8px;">
+              <div style="font-size:10px;font-weight:500;color:#2B5438;margin-bottom:2px;">Saran perbaikan:</div>
+              <div style="font-size:11px;color:#3A6B4A;">"Pengaruh Intensitas Penggunaan Instagram terhadap Perilaku Impulse Buying pada Mahasiswa Surabaya (2023–2024)"</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="screen" id="screen-mager">
+        <div class="breadcrumb">Sebelum mulai / Mager Diagnosis</div>
+        <div id="quiz-wrap">
+          <div style="background:#FBF7F0;border:0.5px solid #D4C8B8;border-radius:10px;padding:14px;">
+            <div style="font-size:13px;font-weight:500;color:#3D1A1A;margin-bottom:3px;">Identifikasi kenapa kamu stuck</div>
+            <div style="font-size:11px;color:#8A7A6E;margin-bottom:12px;">Jawab jujur — hasilnya akan kasih treatment plan yang relevan.</div>
+            <div style="font-size:11px;font-weight:500;color:#5C2020;margin-bottom:8px;">Pertanyaan 1 dari 4</div>
+            <div style="font-size:12px;color:#3D1A1A;margin-bottom:10px;">Kalau lagi duduk untuk ngerjain skripsi, biasanya yang paling sering terjadi adalah...</div>
+            <div class="quiz-opt" onclick="pickQuiz(this)">Buka laptop tapi langsung distraksi hal lain</div>
+            <div class="quiz-opt" onclick="pickQuiz(this)">Bingung mau mulai dari bagian mana dulu</div>
+            <div class="quiz-opt" onclick="pickQuiz(this)">Mulai nulis tapi langsung hapus karena rasanya salah</div>
+            <div class="quiz-opt" onclick="pickQuiz(this)">Nunggu mood yang pas dulu baru mulai</div>
+            <div style="margin-top:10px;"><button class="btn-primary" onclick="showMagerResult()">Lihat Diagnosis →</button></div>
+          </div>
+        </div>
+        <div id="mager-result" style="display:none;">
+          <div style="text-align:center;padding:10px 0 14px;">
+            <div style="display:inline-block;background:#F9F0EE;border-radius:50%;width:52px;height:52px;line-height:52px;font-size:22px;margin-bottom:8px;">🧠</div>
+            <div style="font-size:14px;font-weight:500;color:#5C1818;margin-bottom:3px;">Tipe: Perfectionist Paralysis</div>
+            <div style="font-size:11px;color:#8A7A6E;">Kamu tidak malas — kamu terlalu takut salah sampai tidak jadi mulai.</div>
+          </div>
+          <div style="background:#FBF7F0;border:0.5px solid #D4C8B8;border-radius:8px;padding:12px 14px;">
+            <div style="font-size:12px;font-weight:500;color:#3D1A1A;margin-bottom:8px;">Treatment plan kamu</div>
+            <div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:8px;"><div style="min-width:20px;height:20px;background:#7B2020;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;color:#FAF0E6;font-weight:500;flex-shrink:0;margin-top:1px;">1</div><div style="font-size:11px;color:#3D1A1A;">Terapkan "ugly first draft rule" — tulis apapun dulu tanpa mengedit</div></div>
+            <div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:8px;"><div style="min-width:20px;height:20px;background:#7B2020;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;color:#FAF0E6;font-weight:500;flex-shrink:0;margin-top:1px;">2</div><div style="font-size:11px;color:#3D1A1A;">Gunakan Anti-Revisi Checklist sebelum submit, bukan selama menulis</div></div>
+            <div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:10px;"><div style="min-width:20px;height:20px;background:#7B2020;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;color:#FAF0E6;font-weight:500;flex-shrink:0;margin-top:1px;">3</div><div style="font-size:11px;color:#3D1A1A;">Buka Mindset Journal dan kerjakan Day 1 sekarang</div></div>
+            <button class="btn-green" onclick="nav('mindset',null)">Buka Mindset Journal →</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="screen" id="screen-ujiaoa">
+        <div class="breadcrumb">Data & Statistik / Uji Apa?</div>
+        <div style="background:#FBF7F0;border:0.5px solid #D4C8B8;border-radius:10px;padding:14px;">
+          <div style="font-size:13px;font-weight:500;color:#3D1A1A;margin-bottom:3px;">Decision tree: uji statistik apa yang harus aku pakai?</div>
+          <div style="font-size:11px;color:#8A7A6E;margin-bottom:12px;">Jawab 3 pertanyaan singkat tentang datamu.</div>
+          <div class="dt-node"><div class="dt-q">Berapa variabel yang kamu punya?</div><div class="dt-opts"><button class="dt-btn" onclick="dtPick(this)">2 variabel</button><button class="dt-btn" onclick="dtPick(this)">3+ variabel</button></div></div>
+          <div class="dt-node" id="dt2" style="opacity:0.4;"><div class="dt-q">Skala data dependennya?</div><div class="dt-opts"><button class="dt-btn" onclick="dtPick2(this)">Nominal/Ordinal</button><button class="dt-btn" onclick="dtPick2(this)">Interval/Rasio</button></div></div>
+          <div class="dt-node" id="dt3" style="opacity:0.4;"><div class="dt-q">Data berdistribusi normal?</div><div class="dt-opts"><button class="dt-btn" onclick="dtPick3(this)">Ya</button><button class="dt-btn" onclick="dtPick3(this)">Tidak / Belum tahu</button></div></div>
+          <div id="dt-final" style="display:none;" class="dt-result"><div style="font-size:13px;font-weight:500;color:#2B5438;">Rekomendasi: Regresi Linear Berganda (SPSS)</div><div style="font-size:11px;color:#3A6B4A;margin-top:4px;line-height:1.5;">Datamu cocok untuk regresi linear berganda. Pastikan lolos uji asumsi klasik terlebih dahulu.</div><div style="margin-top:8px;"><button class="btn-green" style="font-size:10px;padding:5px 10px;" onclick="nav('interpretasi',null)">Buka template output →</button></div></div>
+        </div>
+      </div>
+
+      <div class="screen" id="screen-scriptwa">
+        <div class="breadcrumb">Soft Skills / Script WA Dosen</div>
+        <div style="font-size:11px;color:#8A7A6E;margin-bottom:10px;">Template pesan siap kirim untuk komunikasi dengan dosen pembimbing.</div>
+        <div style="background:#FBF7F0;border:0.5px solid #D4C8B8;border-radius:8px;padding:12px 14px;margin-bottom:8px;">
+          <div style="font-size:11px;font-weight:500;color:#5C1818;margin-bottom:6px;">Minta jadwal bimbingan</div>
+          <div style="background:#E8F4EC;border-radius:6px;padding:10px;font-size:11px;color:#2B5438;line-height:1.6;">Assalamualaikum Bapak/Ibu [nama]. Saya [nama], mahasiswa [jurusan] NIM [NIM]. Mohon kesediaan Bapak/Ibu untuk bimbingan terkait [topik]. Saya menyesuaikan jadwal yang paling nyaman. Terima kasih.</div>
+          <button class="btn-outline" style="margin-top:8px;font-size:10px;">Salin template</button>
+        </div>
+        <div style="background:#FBF7F0;border:0.5px solid #D4C8B8;border-radius:8px;padding:12px 14px;">
+          <div style="font-size:11px;font-weight:500;color:#5C1818;margin-bottom:6px;">Respons setelah feedback keras</div>
+          <div style="background:#E8F4EC;border-radius:6px;padding:10px;font-size:11px;color:#2B5438;line-height:1.6;">Terima kasih atas masukan Bapak/Ibu. Saya akan segera memperbaiki [bagian]. Boleh saya konfirmasi untuk poin [poin] — apakah maksudnya [interpretasi]?</div>
+          <button class="btn-outline" style="margin-top:8px;font-size:10px;">Salin template</button>
+        </div>
+      </div>
+
+      <div class="screen" id="screen-simulator">
+        <div class="breadcrumb">Sidang / Sidang Simulator</div>
+        <div style="background:#FBF7F0;border:0.5px solid #D4C8B8;border-radius:10px;padding:14px;">
+          <div style="font-size:13px;font-weight:500;color:#3D1A1A;margin-bottom:4px;">Latihan sidang mandiri via AI</div>
+          <div style="font-size:11px;color:#8A7A6E;margin-bottom:12px;">Pilih persona dosen penguji, lalu salin prompt ke ChatGPT/Claude untuk mulai simulasi.</div>
+          <div style="font-size:11px;font-weight:500;color:#3D1A1A;margin-bottom:6px;">Pilih persona dosen:</div>
+          <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-bottom:12px;" id="sim-persona-grid"></div>
+          <div id="sim-prompt-box" style="display:none;">
+            <div style="font-size:11px;font-weight:500;color:#3D1A1A;margin-bottom:5px;">Prompt siap pakai:</div>
+            <div id="sim-prompt-text" style="background:#E8F4EC;border-radius:6px;padding:10px;font-size:11px;color:#2B5438;line-height:1.6;"></div>
+            <div style="display:flex;gap:8px;margin-top:8px;">
+              <button class="btn-primary" style="font-size:10px;">Salin prompt</button>
+              <button class="btn-outline" style="font-size:10px;" onclick="nav('persona',null)">Lihat taktik dosen ini →</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="screen" id="screen-checklist"><div class="breadcrumb">Penulisan / Anti-Revisi Kit</div><div style="background:#FBF7F0;border:0.5px solid #D4C8B8;border-radius:10px;padding:14px;"><div style="font-size:13px;font-weight:500;color:#3D1A1A;margin-bottom:4px;">Checklist anti-revisi per bab</div><div style="font-size:11px;color:#8A7A6E;margin-bottom:10px;">Selesaikan checklist ini sebelum submit ke pembimbing.</div><div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;"><input type="checkbox" id="c1"/><label for="c1" style="font-size:11px;color:#3D1A1A;">Latar belakang memuat data terkini (maks. 3 tahun)</label></div><div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;"><input type="checkbox" id="c2"/><label for="c2" style="font-size:11px;color:#3D1A1A;">Research gap dinyatakan secara eksplisit</label></div><div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;"><input type="checkbox" id="c3"/><label for="c3" style="font-size:11px;color:#3D1A1A;">Rumusan masalah sesuai dengan tujuan penelitian</label></div><div style="display:flex;gap:8px;align-items:center;"><input type="checkbox" id="c4"/><label for="c4" style="font-size:11px;color:#3D1A1A;">Manfaat penelitian dibagi teoritis dan praktis</label></div></div></div>
+      <div class="screen" id="screen-prompt"><div class="breadcrumb">Penulisan / AI Prompt Pack</div><div class="lock-row"><div class="lock-icon">🤖</div><div><div style="font-size:12px;font-weight:500;color:#3D1A1A;">50+ prompt siap pakai per bagian skripsi</div><div style="font-size:10px;color:#8A7A6E;margin-top:2px;">Brainstorm judul, outline bab, parafrase, cari gap — semua ada promptnya</div></div></div></div>
+      <div class="screen" id="screen-writingos"><div class="breadcrumb">Penulisan / Writing OS</div><div class="lock-row"><div class="lock-icon">📋</div><div><div style="font-size:12px;font-weight:500;color:#3D1A1A;">Notion workspace lengkap untuk skripsi</div><div style="font-size:10px;color:#8A7A6E;margin-top:2px;">Tracker jurnal, kalender bab, log bimbingan dalam satu sistem</div></div></div></div>
+      <div class="screen" id="screen-interpretasi"><div class="breadcrumb">Data & Statistik / Template Output</div><div class="lock-row"><div class="lock-icon">📄</div><div><div style="font-size:12px;font-weight:500;color:#3D1A1A;">Template interpretasi output SPSS & PLS-SEM</div><div style="font-size:10px;color:#8A7A6E;margin-top:2px;">Paste angka, kalimat interpretasi otomatis terbentuk</div></div></div></div>
+      <div class="screen" id="screen-banksoal"><div class="breadcrumb">Sidang / Bank Soal</div><div class="lock-row"><div class="lock-icon">🗂️</div><div><div style="font-size:12px;font-weight:500;color:#3D1A1A;">200+ pertanyaan sidang nyata per jurusan</div><div style="font-size:10px;color:#8A7A6E;margin-top:2px;">Dikategorikan berdasarkan jurusan, bab, dan tingkat kesulitan</div></div></div></div>
+      <div class="screen" id="screen-mindset"><div class="breadcrumb">Soft Skills / Mindset Journal</div><div class="lock-row"><div class="lock-icon">🧘</div><div><div style="font-size:12px;font-weight:500;color:#3D1A1A;">Jurnal 30 hari persiapan mental sidang</div><div style="font-size:10px;color:#8A7A6E;margin-top:2px;">Daily prompts berbasis tantangan nyata mahasiswa akhir</div></div></div></div>
+      <div class="screen" id="screen-alumni"><div class="breadcrumb">Pasca Sidang / Alumni Pack</div><div class="lock-row"><div class="lock-icon">🎓</div><div><div style="font-size:12px;font-weight:500;color:#3D1A1A;">Upsell pasca sidang — Rp99.000</div><div style="font-size:10px;color:#8A7A6E;margin-top:2px;">CV akademik, panduan publikasi jurnal, convert skripsi jadi artikel ilmiah</div></div><button class="btn-green" style="font-size:10px;padding:6px 10px;margin-left:auto;flex-shrink:0;">Beli →</button></div></div>
+      <div class="screen" id="screen-paket">
+        <div class="breadcrumb">Upgrade paket</div>
+        <div class="paket-grid">
+          <div class="paket-card" style="background:#FBF7F0;"><div style="font-size:14px;font-weight:500;color:#5C1818;margin-bottom:4px;">Spark</div><div style="font-size:10px;color:#8A7A6E;">1x Pertemuan</div><div style="font-size:16px;font-weight:500;color:#7B2020;margin:8px 0;">Rp150.000</div><div class="paket-feature"><span style="color:#3A6B4A;">✓</span><span style="font-size:10px;color:#3D1A1A;">Judul Checker</span></div><div class="paket-feature"><span style="color:#3A6B4A;">✓</span><span style="font-size:10px;color:#3D1A1A;">Mager Diagnosis</span></div><div class="paket-feature"><span style="color:#3A6B4A;">✓</span><span style="font-size:10px;color:#3D1A1A;">Script WA Dosen</span></div></div>
+          <div class="paket-card" style="background:#FBF7F0;border:2px solid #7B2020;"><div style="font-size:9px;font-weight:500;background:#7B2020;color:#FAF0E6;padding:2px 7px;border-radius:20px;display:inline-block;margin-bottom:5px;">Paling populer</div><div style="font-size:14px;font-weight:500;color:#5C1818;margin-bottom:4px;">Drive</div><div style="font-size:10px;color:#8A7A6E;">3x Pertemuan / 3 Bulan</div><div style="font-size:16px;font-weight:500;color:#7B2020;margin:8px 0;">Rp300.000</div><div class="paket-feature"><span style="color:#3A6B4A;">✓</span><span style="font-size:10px;color:#3D1A1A;">Semua fitur Spark</span></div><div class="paket-feature"><span style="color:#3A6B4A;">✓</span><span style="font-size:10px;color:#3D1A1A;">Anti-Revisi Kit</span></div><div class="paket-feature"><span style="color:#3A6B4A;">✓</span><span style="font-size:10px;color:#3D1A1A;">Writing OS + AI Prompt</span></div></div>
+          <div class="paket-card" style="background:#7B2020;"><div style="font-size:14px;font-weight:500;color:#FAF0E6;margin-bottom:4px;">Summit</div><div style="font-size:10px;color:rgba(255,255,255,0.6);">6x Pertemuan / 3 Bulan</div><div style="font-size:16px;font-weight:500;color:#FAF0E6;margin:8px 0;">Rp600.000</div><div class="paket-feature"><span style="color:#9FE1CB;">✓</span><span style="font-size:10px;color:rgba(255,255,255,0.85);">Semua fitur Drive</span></div><div class="paket-feature"><span style="color:#9FE1CB;">✓</span><span style="font-size:10px;color:rgba(255,255,255,0.85);">Persona Dosen (8 kartu)</span></div><div class="paket-feature"><span style="color:#9FE1CB;">✓</span><span style="font-size:10px;color:rgba(255,255,255,0.85);">Sidang Simulator</span></div><div class="paket-feature"><span style="color:#9FE1CB;">✓</span><span style="font-size:10px;color:rgba(255,255,255,0.85);">Uji Apa? + Bank Soal</span></div></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+const titles={dashboard:'Dashboard',judul:'Judul Checker',mager:'Mager Diagnosis',checklist:'Anti-Revisi Kit',prompt:'AI Prompt Pack',writingos:'Writing OS',ujiaoa:'Uji Apa?',interpretasi:'Template Output',persona:'Persona Dosen Penguji',simulator:'Sidang Simulator',banksoal:'Bank Soal',scriptwa:'Script WA Dosen',mindset:'Mindset Journal',alumni:'Alumni Pack',paket:'Pilih Paket'};
+
+function nav(id,el){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  const s=document.getElementById('screen-'+id);
+  if(s)s.classList.add('active');
+  document.getElementById('topbar-title').textContent=titles[id]||id;
+  document.querySelectorAll('.sb-item').forEach(i=>i.classList.remove('active'));
+  if(el)el.classList.add('active');
+  if(id==='persona')renderPersona('all');
+  if(id==='simulator')renderSimPersonas();
+}
+
+const personas=[
+  {id:1,emoji:'😤',bg:'#FDECEA',danger:'tinggi',dLabel:'Bahaya Tinggi',dColor:'#A32D2D',dBg:'#FCEBEB',name:'Si Metodologi Polisi',type:'Obsesi: Bab 3 · Validitas & reliabilitas setiap pilihan metode',signals:['Langsung buka ke halaman Bab 3 saat terima berkas','Sering tanya "kenapa kamu pilih metode ini bukan itu?"','Ekspresi datar sepanjang presentasi'],tactic:'Hafal reasoning di balik setiap keputusan metodologi. Jangan cuma bilang "karena kuantitatif cocok" — jelaskan karakteristik data, skala pengukuran, dan tujuan penelitian. Siapkan satu kalimat justifikasi per keputusan: populasi, teknik sampling, alat uji.',weapons:['Justifikasi metode per keputusan','Perbandingan metode alternatif','Referensi metodologi terbaru'],prompt:'Kamu adalah dosen penguji yang sangat ketat soal metodologi penelitian. Tanyakan mahasiswa tentang alasan pemilihan metode, validitas instrumen, dan teknik sampling mereka. Gunakan nada kritis tapi akademis. Mulai dengan: "Baik, coba jelaskan kenapa kamu memilih metode kuantitatif untuk penelitian ini?"'},
+  {id:2,emoji:'📚',bg:'#EEF0FB',danger:'sedang',dLabel:'Bahaya Sedang',dColor:'#3C3489',dBg:'#EEEDFE',name:'Si Teori Only',type:'Obsesi: Bab 2 · Landasan teori harus kokoh dari sumber primer',signals:['Tanya "dari siapa definisi ini?"','Cek daftar pustaka saat terima berkas','Tidak puas kalau sumber cuma buku teks lokal'],tactic:'Siapkan 2–3 definisi alternatif per variabel utama dari tokoh berbeda beserta tahun dan perbedaan nuansanya. Tunjukkan kamu bisa membandingkan — bukan sekadar memilih yang paling mudah dikutip.',weapons:['Matriks definisi variabel','Sumber primer internasional','Perbandingan teori lintas tokoh'],prompt:'Kamu adalah dosen penguji yang sangat fokus pada landasan teori. Tanyakan definisi variabel dari berbagai tokoh, minta mahasiswa membandingkan teori, dan tanyakan alasan memilih teori tertentu. Mulai dengan: "Dari mana kamu mengambil definisi variabel X ini? Ada tokoh lain yang mendefinisikan berbeda?"'},
+  {id:3,emoji:'🔍',bg:'#FFF8E7',danger:'sedang',dLabel:'Bahaya Sedang',dColor:'#854F0B',dBg:'#FAEEDA',name:'Si Relevansi Checker',type:'Obsesi: Bab 1 · Penelitian harus relevan, urgen, belum banyak diteliti',signals:['Tanya "kenapa topik ini penting diteliti sekarang?"','Bandingkan dengan penelitian lain yang mirip','Tanya soal novelty dan kontribusi penelitian'],tactic:'Siapkan data aktual (maks. 2 tahun terakhir) yang membuktikan urgensi topik. Jawab pertanyaan "so what?" dengan jelas: apa yang berubah kalau penelitian ini ada vs tidak ada.',weapons:['Data statistik terkini','Research gap eksplisit','Novelty statement yang kuat'],prompt:'Kamu adalah dosen penguji yang sangat peduli dengan relevansi dan urgensi penelitian. Tanyakan mengapa topik ini penting, apa yang belum dijawab oleh penelitian sebelumnya, dan apa kontribusi nyata penelitian ini. Mulai dengan: "Saya lihat sudah banyak penelitian serupa. Apa yang membedakan penelitianmu?"'},
+  {id:4,emoji:'🧮',bg:'#EAF3DE',danger:'tinggi',dLabel:'Bahaya Tinggi',dColor:'#27500A',dBg:'#EAF3DE',name:'Si Angka Detektif',type:'Obsesi: Bab 4 · Setiap angka harus bisa dijelaskan dan dipertanggungjawabkan',signals:['Bawa kalkulator saat sidang','Tanya interpretasi spesifik dari satu tabel output','Minta konfirmasi apakah uji asumsi sudah semua dilakukan'],tactic:'Hafal semua angka kunci: nilai signifikansi, koefisien, R-square, hasil uji asumsi. Latih menjelaskan arti setiap angka dalam bahasa manusia, bukan hanya "signifikan karena 0.000 < 0.05".',weapons:['Hafal angka kunci hasil uji','Interpretasi dalam bahasa awam','Semua uji asumsi selesai & dicatat'],prompt:'Kamu adalah dosen penguji yang sangat detail soal angka dan statistik. Tanyakan interpretasi spesifik dari tabel output, minta penjelasan uji asumsi, dan tanyakan arti setiap angka dalam konteks penelitian. Mulai dengan: "Coba jelaskan angka R-square 0.67 ini artinya apa dalam penelitianmu?"'},
+  {id:5,emoji:'🗣️',bg:'#F5EEF8',danger:'rendah',dLabel:'Bahaya Rendah',dColor:'#6B2D8B',dBg:'#F5EEF8',name:'Si Lawyer',type:'Obsesi: Konsistensi · Suka mencari inkonsistensi antar bab',signals:['Sering bolak-balik halaman sambil bilang "tapi di Bab 1..."','Pertanyaannya terasa seperti jebakan','Tanya hal yang sudah dijawab dengan framing berbeda'],tactic:'Baca ulang skripsimu dari sudut pandang orang yang mencari kontradiksi. Pastikan rumusan masalah, tujuan, hipotesis, pembahasan, dan kesimpulan saling mengacu secara konsisten.',weapons:['Matriks konsistensi antar bab','Baca ulang skripsi khusus cek inkonsistensi','Jawab dengan merujuk halaman spesifik'],prompt:'Kamu adalah dosen penguji yang suka mencari inkonsistensi antar bab. Bandingkan pernyataan di bab 1 dengan bab 5, cari kontradiksi antara rumusan masalah dan kesimpulan. Mulai dengan: "Di Bab 1 kamu bilang X, tapi di Bab 5 kamu menyimpulkan Y. Bisa dijelaskan?"'},
+  {id:6,emoji:'🤔',bg:'#F0F7FF',danger:'rendah',dLabel:'Bahaya Rendah',dColor:'#185FA5',dBg:'#E6F1FB',name:'Si Pengembang',type:'Obsesi: Implikasi · Ingin tahu kelanjutan dan manfaat nyata penelitian',signals:['Banyak tanya "lalu apa?", "implementasinya bagaimana?"','Tertarik pada saran praktis di Bab 5','Sering minta elaborasi di luar isi skripsi'],tactic:'Siapkan 2–3 saran penelitian lanjutan yang konkret dan realistis. Tunjukkan kamu sudah berpikir tentang implikasi praktis hasil penelitianmu untuk stakeholder nyata.',weapons:['Saran penelitian lanjutan spesifik','Implikasi praktis per stakeholder','Koneksi hasil ke isu nyata'],prompt:'Kamu adalah dosen penguji yang sangat tertarik pada implikasi dan kebermanfaatan penelitian. Tanyakan bagaimana hasil penelitian bisa diimplementasikan, siapa yang bisa manfaatkan, dan apa penelitian lanjutan yang relevan. Mulai dengan: "Hasil penelitianmu menarik — siapa yang seharusnya paling peduli dengan temuan ini?"'},
+  {id:7,emoji:'😴',bg:'#F1EFE8',danger:'rendah',dLabel:'Bahaya Rendah',dColor:'#444441',dBg:'#F1EFE8',name:'Si Silent Judge',type:'Obsesi: Kesan umum · Sedikit bicara tapi penilaian tajam',signals:['Jarang bertanya tapi mencatat terus','Ekspresi sulit dibaca sepanjang sidang','Pertanyaannya singkat tapi dalam'],tactic:'Jangan tergoda mengisi keheningan dengan jawaban panjang yang tidak perlu. Jawab singkat dan tepat, lalu berhenti. Tunjukkan kepercayaan diri melalui bahasa tubuh: kontak mata, postur tegak, tempo bicara yang tenang.',weapons:['Jawaban ringkas dan presisi','Bahasa tubuh percaya diri','Jangan overthink keheningan'],prompt:'Kamu adalah dosen penguji yang pendiam dan tidak banyak bereaksi. Ajukan pertanyaan yang singkat namun dalam, dan tunggu jawaban mahasiswa dengan diam. Berikan respons minimal untuk menguji apakah mahasiswa bisa tetap tenang. Mulai dengan: "Jelaskan penelitianmu dalam satu kalimat."'},
+  {id:8,emoji:'🔥',bg:'#FDECEA',danger:'tinggi',dLabel:'Bahaya Tinggi',dColor:'#A32D2D',dBg:'#FCEBEB',name:"Si Devil's Advocate",type:'Obsesi: Ketahanan argumen · Sengaja menyerang untuk uji kekuatan posisi',signals:['Pertanyaannya terasa tidak masuk akal atau terlalu ekstrem','Bilang "saya rasa penelitian ini lemah karena..."','Setelah kamu jawab, tetap push back'],tactic:'Pahami ini bukan serangan personal — ini ujian seberapa yakin kamu dengan penelitianmu. Tetap tenang, akui kelemahan yang memang ada, lalu arahkan ke kelebihan. Jangan defensif.',weapons:['Akui limitasi dengan elegan','Jangan terpancing emosi','Counter-argument untuk 3 kelemahan terbesar'],prompt:'Kamu adalah dosen penguji yang sengaja bersikap skeptis dan kritis untuk menguji ketahanan argumen mahasiswa. Sanggah jawaban mereka, tantang asumsi dasar penelitian, dan terus push back meski sudah dijawab. Mulai dengan: "Jujur, saya belum yakin dengan penelitian ini. Variabel kamu terlalu sederhana untuk mewakili fenomena yang kompleks."'}
+];
+
+let pActiveFilter='all';
+let pOpenId=null;
+
+function pfilter(f,el){
+  pActiveFilter=f;
+  document.querySelectorAll('#pfilter-row .ftag').forEach(b=>b.classList.remove('on'));
+  el.classList.add('on');
+  pOpenId=null;
+  renderPersona(f);
+}
+
+function ptoggle(id){
+  pOpenId=pOpenId===id?null:id;
+  renderPersona(pActiveFilter);
+}
+
+function renderPersona(f){
+  const visible=f==='all'?personas:personas.filter(p=>p.danger===f);
+  const grid=document.getElementById('persona-grid');
+  grid.innerHTML='<div class="p-grid">'+visible.map(p=>`
+    <div class="p-card${pOpenId===p.id?' open':''}" id="pc-${p.id}" onclick="ptoggle(${p.id})">
+      <div class="p-card-top">
+        <div class="p-avatar" style="background:${p.bg};">${p.emoji}</div>
+        <div style="flex:1;min-width:0;">
+          <div class="p-name">${p.name}</div>
+          <div class="p-type">${p.type}</div>
+          <span class="p-badge" style="background:${p.dBg};color:${p.dColor};">${p.dLabel}</span>
+        </div>
+      </div>
+      <div class="toggle-hint">${pOpenId===p.id?'▲ tutup':'▼ sinyal & taktik'}</div>
+      <div class="p-body">
+        <div class="p-divider"></div>
+        <div class="mini-label">Cara mengenalinya</div>
+        ${p.signals.map(s=>`<div class="sig-row"><div class="sig-dot" style="background:${p.dColor};flex-shrink:0;margin-top:4px;"></div><div class="sig-text">${s}</div></div>`).join('')}
+        <div class="tactic-box">
+          <div class="tactic-title">Taktik menghadapinya</div>
+          <div class="tactic-text">${p.tactic}</div>
+        </div>
+        <div class="mini-label" style="margin-top:8px;">Senjata yang harus disiapkan</div>
+        <div class="weapons">${p.weapons.map(w=>`<span class="weapon">${w}</span>`).join('')}</div>
+        <div style="margin-top:8px;">
+          <button class="btn-green" style="font-size:10px;padding:5px 10px;" onclick="event.stopPropagation();goSim(${p.id})">Latihan lawan dosen ini →</button>
+        </div>
+      </div>
+    </div>
+  `).join('')+'</div>';
+}
+
+function goSim(id){
+  nav('simulator',null);
+  setTimeout(()=>selectSimPersona(id),50);
+}
+
+function renderSimPersonas(){
+  const g=document.getElementById('sim-persona-grid');
+  g.innerHTML=personas.map(p=>`
+    <div onclick="selectSimPersona(${p.id})" id="spc-${p.id}" style="display:flex;align-items:center;gap:7px;background:#FBF7F0;border:0.5px solid #D4C8B8;border-radius:7px;padding:7px 9px;cursor:pointer;">
+      <span style="font-size:14px;">${p.emoji}</span>
+      <span style="font-size:10px;color:#3D1A1A;">${p.name}</span>
+    </div>
+  `).join('');
+}
+
+function selectSimPersona(id){
+  document.querySelectorAll('[id^="spc-"]').forEach(el=>{el.style.borderColor='#D4C8B8';el.style.background='#FBF7F0';});
+  const el=document.getElementById('spc-'+id);
+  if(el){el.style.borderColor='#7B2020';el.style.background='#F9F0EE';}
+  const p=personas.find(x=>x.id===id);
+  if(p){
+    document.getElementById('sim-prompt-box').style.display='block';
+    document.getElementById('sim-prompt-text').textContent=p.prompt;
+  }
+}
+
+function showJudulResult(){document.getElementById('judul-result').style.display='block';}
+function pickQuiz(el){document.querySelectorAll('.quiz-opt').forEach(o=>o.classList.remove('picked'));el.classList.add('picked');}
+function showMagerResult(){document.getElementById('quiz-wrap').style.display='none';document.getElementById('mager-result').style.display='block';}
+function dtPick(el){el.closest('.dt-opts').querySelectorAll('.dt-btn').forEach(b=>b.classList.remove('chosen'));el.classList.add('chosen');document.getElementById('dt2').style.opacity='1';}
+function dtPick2(el){el.closest('.dt-opts').querySelectorAll('.dt-btn').forEach(b=>b.classList.remove('chosen'));el.classList.add('chosen');document.getElementById('dt3').style.opacity='1';}
+function dtPick3(el){el.closest('.dt-opts').querySelectorAll('.dt-btn').forEach(b=>b.classList.remove('chosen'));el.classList.add('chosen');document.getElementById('dt-final').style.display='block';}
+</script>
