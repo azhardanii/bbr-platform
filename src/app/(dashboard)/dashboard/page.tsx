@@ -3,6 +3,7 @@ import Link from "next/link";
 import { FileSearch, ArrowRight } from "lucide-react";
 import ProgressTracker from "./ProgressTracker";
 import VaultWidget from "./VaultWidget";
+import DashboardHeader from "./DashboardHeader";
 export const metadata = {
   title: "Dashboard - BBR Platform",
 };
@@ -16,9 +17,7 @@ export default async function DashboardPage() {
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 pb-10">
       {/* Header */}
       <div>
-        <h1 className="font-display font-bold text-3xl text-[var(--color-text-primary)]">
-          Halo, {user?.name?.split(' ')[0] || 'Mahasiswa'}!
-        </h1>
+        <DashboardHeader defaultName={user?.name?.split(' ')[0] || 'Mahasiswa'} />
         {/* Example: If they have a title */}
         {/* <p className="font-display italic text-[var(--color-text-secondary)] mt-2">
           "Pengaruh X terhadap Y di Masa Z"
