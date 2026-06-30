@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useJenjang } from "@/hooks/useJenjang";
 
 export default function DashboardHeader({ defaultName }: { defaultName: string }) {
   const [name, setName] = useState(defaultName);
+  const { judulTugasAkhir } = useJenjang();
 
   useEffect(() => {
     const fetchName = () => {
@@ -26,8 +28,10 @@ export default function DashboardHeader({ defaultName }: { defaultName: string }
   }, []);
 
   return (
-    <h1 className="font-display font-bold text-3xl text-[var(--color-text-primary)]">
-      Halo, {name}! 👋🏻
-    </h1>
+    <div>
+      <h1 className="font-display font-bold text-3xl text-[var(--color-text-primary)]">
+        Halo, {name}! 👋🏻
+      </h1>
+    </div>
   );
 }

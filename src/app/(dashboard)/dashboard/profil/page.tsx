@@ -13,9 +13,9 @@ export default function ProfilPage() {
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
-  const [userData, setUserData] = useState<any>({ namaLengkap: "Mahasiswa", jenjang: "S1" });
+  const [userData, setUserData] = useState<any>({ namaLengkap: "Mahasiswa", jenjang: "S1", jurusan: "" });
   const [isEditing, setIsEditing] = useState(false);
-  const [editForm, setEditForm] = useState({ namaLengkap: "", jenjang: "S1" });
+  const [editForm, setEditForm] = useState({ namaLengkap: "", jenjang: "S1", jurusan: "" });
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -24,7 +24,7 @@ export default function ProfilPage() {
         try {
           const parsed = JSON.parse(ob);
           setUserData(parsed);
-          setEditForm({ namaLengkap: parsed.namaLengkap || "", jenjang: parsed.jenjang || "S1" });
+          setEditForm({ namaLengkap: parsed.namaLengkap || "", jenjang: parsed.jenjang || "S1", jurusan: parsed.jurusan || "" });
         } catch (e) {}
       }
     }
@@ -72,7 +72,7 @@ export default function ProfilPage() {
           {!isEditing ? (
             <>
               <h2 className="text-2xl font-bold text-[var(--color-text-primary)] mb-1 text-center">{userData.namaLengkap}</h2>
-              <p className="text-[var(--color-brand-600)] font-semibold mb-2">{userData.jenjang}</p>
+              <p className="text-[var(--color-brand-600)] font-semibold mb-2">{userData.jenjang} {userData.jurusan ? `- ${userData.jurusan}` : ''}</p>
               <p className="text-[var(--color-text-secondary)] mb-6 flex items-center gap-2 text-center">
                 <Mail size={16} /> {userData.namaLengkap.toLowerCase().replace(/\s+/g, '')}@kampus.ac.id
               </p>
@@ -91,6 +91,15 @@ export default function ProfilPage() {
                   type="text" 
                   value={editForm.namaLengkap}
                   onChange={e => setEditForm({...editForm, namaLengkap: e.target.value})}
+                  className="w-full p-3 border-2 border-[var(--color-bg-muted)] rounded-lg focus:border-[var(--color-brand-600)] outline-none" 
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-[var(--color-text-body)] mb-1">Jurusan / Program Studi</label>
+                <input 
+                  type="text" 
+                  value={editForm.jurusan}
+                  onChange={e => setEditForm({...editForm, jurusan: e.target.value})}
                   className="w-full p-3 border-2 border-[var(--color-bg-muted)] rounded-lg focus:border-[var(--color-brand-600)] outline-none" 
                 />
               </div>
@@ -159,7 +168,7 @@ export default function ProfilPage() {
           <div className="bg-white border-2 border-[var(--color-brand-100)] p-6 rounded-2xl shadow-sm flex flex-col justify-center">
             <h3 className="font-bold text-[var(--color-brand-600)] mb-2">Jadwal Berikutnya</h3>
             <p className="text-lg font-semibold text-[var(--color-text-primary)]">Belum ada jadwal aktif</p>
-            <p className="text-sm text-[var(--color-text-secondary)] mt-1">Silakan hubungi Kak Roselini via WhatsApp untuk mengatur jadwal bimbingan Anda.</p>
+            <p className="text-sm text-[var(--color-text-secondary)] mt-1">Silakan hubungi Kak Roselini via WhatsApp untuk mengatur jadwal bimbingan Kamu.</p>
             <button className="mt-4 px-4 py-2 bg-[var(--color-brand-50)] text-[var(--color-brand-600)] font-semibold rounded-lg border border-[var(--color-brand-100)] w-fit hover:bg-[var(--color-brand-100)] transition-colors">
               Chat Admin WA
             </button>

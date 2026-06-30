@@ -1,24 +1,51 @@
-import { google } from "@ai-sdk/google";
-import { streamText } from "ai";
+import { MODELS, ai } from "@/lib/ai";
 
-export const maxDuration = 30; // Allow longer duration for AI response
+export const maxDuration = 60;
 
 export async function POST(req: Request) {
   try {
     const { prompt, jenjang = "skripsi" } = await req.json();
 
-    const result = await streamText({
-      model: google("gemini-1.5-flash"),
-      system: `Anda adalah dosen pembimbing akademik yang sangat ahli dalam menyusun judul ${jenjang} untuk mahasiswa tingkat akhir di Indonesia.`,
-      prompt,
+    const jenjangLabel = jenjang === "tesis" ? "tesis (S2)" : jenjang === "disertasi" ? "disertasi (S3)" : "skripsi (S1)";
+
+    const systemInstruction = `Kamu adalah konsultan akademik senior yang sangat berpengalaman dalam membimbing mahasiswa menyusun judul ${jenjangLabel} di Indonesia.
+Kamu HANYA BOLEH merespons dalam format JSON array murni tanpa format markdown \`\`\`json.
+Setiap objek dalam array JSON mewakili satu ide judul penelitian dan WAJIB memiliki properti berikut:
+1. "judul" (string): Rumusan judul yang spesifik, tidak lebih dari 15 kata.
+2. "deskripsi" (string): Alasan mengapa judul relevan, variabel utama (X dan Y), serta metode yang disarankan.
+3. "referensi" (array of string): WAJIB berisi MINIMAL 5 referensi jurnal/buku akademik valid (judul, penulis, tahun) yang relevan dengan judul.
+
+Contoh format respons:
+[
+  {
+    "judul": "Pengaruh X terhadap Y",
+    "deskripsi": "Penelitian ini relevan karena... Metode kuantitatif.",
+    "referensi": ["Jurnal A (2023)", "Jurnal B (2022)", "Buku C (2021)", "Buku D (2020)", "Jurnal E (2024)"]
+  }
+]`;
+
+    const interaction = await ai.interactions.create({
+      model: MODELS.REASONING,
+      system_instruction: systemInstruction,
+      input: prompt,
     });
 
-    return result.toTextStreamResponse();
+    const textOutput = interaction.output_text || "[]";
+    
+    // Membersihkan kemungkinan markdown code blocks
+    const cleanJson = textOutput.replace(/```json/g, "").replace(/```/g, "").trim();
+    
+    return new Response(cleanJson, {
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
   } catch (error) {
     console.error("AI Error:", error);
-    return new Response(JSON.stringify({ error: "Failed to generate AI response" }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({ error: "Gagal menghasilkan respons AI. Silakan coba lagi." }),
+      { status: 500, headers: { "Content-Type": "application/json" } }
+    );
   }
 }
+

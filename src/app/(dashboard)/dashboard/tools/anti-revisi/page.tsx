@@ -23,8 +23,8 @@ export default function AntiRevisiPage() {
       title: "Tinjauan Pustaka",
       items: [
         { id: "2.1", text: "Grand theory dijelaskan relevansinya dengan variabel penelitian", desc: "Cari bagian teori utama. Pastikan ada paragraf yang secara gamblang menjelaskan alasan mengapa teori tersebut cocok membedah masalah penelitian ini." },
-        { id: "2.2", text: "Penelitian terdahulu disajikan dalam bentuk matriks/tabel mapping", desc: `Cek keberadaan tabel yang merangkum minimal 5 jurnal terdahulu: nama peneliti, tahun, judul, hasil, dan letak PERBEDAANNYA dengan ${labelLower} Anda.` },
-        { id: "2.3", text: "Kerangka konseptual memuat semua variabel dan arah hubungan dengan jelas", desc: "Lihat gambar bagan Anda. Pastikan jumlah kotaknya sesuai dengan variabel yang diteliti dan arah panahnya logis (dari X ke Y)." }
+        { id: "2.2", text: "Penelitian terdahulu disajikan dalam bentuk matriks/tabel mapping", desc: `Cek keberadaan tabel yang merangkum minimal 5 jurnal terdahulu: nama peneliti, tahun, judul, hasil, dan letak PERBEDAANNYA dengan ${labelLower} Kamu.` },
+        { id: "2.3", text: "Kerangka konseptual memuat semua variabel dan arah hubungan dengan jelas", desc: "Lihat gambar bagan Kamu. Pastikan jumlah kotaknya sesuai dengan variabel yang diteliti dan arah panahnya logis (dari X ke Y)." }
       ]
     },
     {
@@ -51,7 +51,7 @@ export default function AntiRevisiPage() {
       items: [
         { id: "5.1", text: "Kesimpulan menjawab rumusan masalah secara langsung", desc: "Bandingkan isi kesimpulan dengan rumusan masalah di Bab 1. Jangan sertakan tabel output atau angka t-hitung lagi di bab ini." },
         { id: "5.2", text: "Saran bersifat aplikatif, spesifik, dan tidak klise", desc: "Hindari kata normatif 'diharapkan lebih baik'. Berikan saran konkrit: 'Instansi X sebaiknya mengubah jam kerja menjadi Y untuk mengatasi Z'." },
-        { id: "5.3", text: "Keterbatasan penelitian disebutkan dengan jujur", desc: "Tuliskan kelemahan metode atau kendala data yang tidak bisa Anda cover agar bisa menjadi referensi riset lanjutan bagi pembaca." }
+        { id: "5.3", text: "Keterbatasan penelitian disebutkan dengan jujur", desc: "Tuliskan kelemahan metode atau kendala data yang tidak bisa Kamu cover agar bisa menjadi referensi riset lanjutan bagi pembaca." }
       ]
     }
   ];

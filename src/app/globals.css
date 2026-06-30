@@ -81,3 +81,5 @@ body {
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: var(--color-brand-600);
 }
+
+@plugin "@tailwindcss/typography";

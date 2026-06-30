@@ -4,6 +4,7 @@ import { FileSearch, ArrowRight } from "lucide-react";
 import ProgressTracker from "./ProgressTracker";
 import VaultWidget from "./VaultWidget";
 import DashboardHeader from "./DashboardHeader";
+import JudulStatusCard from "./JudulStatusCard";
 export const metadata = {
   title: "Dashboard - BBR Platform",
 };
@@ -27,26 +28,8 @@ export default async function DashboardPage() {
       {/* Vault Widget */}
       <VaultWidget />
 
-      {/* CTA Temukan Judul (Tampil jika belum punya judul) */}
-      <div className="bg-white border-2 border-[var(--color-brand-100)] p-5 md:p-6 rounded-2xl flex flex-col sm:flex-row items-center gap-4 sm:justify-between shadow-sm">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-full bg-[var(--color-brand-50)] flex items-center justify-center text-[var(--color-brand-600)]">
-            <FileSearch size={24} />
-          </div>
-          <div>
-            <h3 className="font-semibold text-[var(--color-text-primary)]">Belum punya judul?</h3>
-            <p className="text-sm text-[var(--color-text-secondary)] mt-1">
-              Gunakan Judul Finder untuk menemukan dan memvalidasi judul yang tepat.
-            </p>
-          </div>
-        </div>
-        <Link
-          href="/dashboard/tools/judul-finder"
-          className="w-full sm:w-auto px-6 py-3 bg-[var(--color-brand-600)] text-white text-sm font-semibold rounded-xl text-center hover:bg-[var(--color-brand-500)] transition-colors"
-        >
-          Temukan Judul &rarr;
-        </Link>
-      </div>
+      {/* CTA Temukan Judul atau Status Judul */}
+      <JudulStatusCard />
 
       {/* Progress Section */}
       <ProgressTracker />

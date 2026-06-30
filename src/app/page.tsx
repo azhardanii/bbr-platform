@@ -83,7 +83,7 @@ const PAIN_POINTS = [
 
 const FAQS = [
   { q: "Apakah ini sama dengan ChatGPT biasa?", a: "Tidak. BBR menggunakan prompt yang sudah dioptimasi khusus untuk konteks tugas akhir Indonesia, bukan prompt generik. Setiap tool dirancang untuk kebutuhan spesifik mahasiswa tingkat akhir dengan output yang langsung relevan untuk skripsi/tesis/disertasi." },
-  { q: "Apakah hasilnya bisa langsung di-copy paste ke skripsi?", a: "Semua output AI adalah titik awal untuk dipahami dan ditulis ulang dengan bahasamu sendiri. BBR membantu kamu memahami dan mengerjakan tugas akhir, bukan mengerjakannya untukmu. Ini sesuai dengan integritas akademik." },
+  { q: "Apakah hasilnya bisa langsung di-copy paste ke skripsi?", a: "Semua output AI adalah titik awal untuk dipahami dan ditulis ulang dengan bahasamu sendiri. Belajar Bareng Roselini membantu kamu memahami dan mengerjakan tugas akhir, ini bukan tempat untuk jokiin tugas akhirmu! Ini sesuai dengan integritas akademik." },
   { q: "Akses Lifetime itu sampai kapan?", a: "Selamanya. Sekali bayar, kamu bisa akses semua tools AI dan update fitur baru tanpa biaya tambahan. Tidak ada langganan bulanan, tidak ada biaya tersembunyi." },
   { q: "Bisa dipakai untuk S2 dan S3 juga?", a: "Tentu! BBR mendukung jenjang S1 (Skripsi), S2 (Tesis), dan S3 (Disertasi). Sistem otomatis menyesuaikan terminologi dan kedalaman analisis sesuai jenjangmu." },
   { q: "Apakah data skripsi saya aman?", a: "Kami tidak menyimpan konten tugas akhirmu di server manapun. Semua proses berjalan secara real-time dan data-mu hanya tersimpan lokal di perangkatmu sendiri." },
@@ -159,7 +159,7 @@ export default function Home() {
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--color-brand-400)] opacity-75" />
                 <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[var(--color-brand-600)]" />
               </span>
-              🚀 Platform AI #1 untuk Tugas Akhir Mahasiswa Indonesia
+              🚀 Asisten AI #1 untuk Tugas Akhir Mahasiswa Indonesia
             </div>
 
             <h1 className="text-4xl sm:text-5xl md:text-7xl font-display font-extrabold text-[var(--color-text-primary)] tracking-tight leading-[1.08] mb-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -618,7 +618,7 @@ export default function Home() {
                 <div className="w-8 h-8 rounded-xl bg-[var(--color-brand-600)] flex items-center justify-center text-white font-bold text-sm">R</div>
                 <span className="font-display font-bold text-lg text-white">BelajarBarengRoselini</span>
               </div>
-              <p className="text-sm leading-relaxed">Platform AI bimbingan tugas akhir yang membantu mahasiswa Indonesia lulus tepat waktu dengan percaya diri.</p>
+              <p className="text-sm leading-relaxed">Asisten AI bimbingan tugas akhir yang membantu mahasiswa Indonesia lulus tepat waktu dengan percaya diri.</p>
             </div>
             <div>
               <h4 className="font-bold text-white text-sm uppercase tracking-wide mb-4">Platform</h4>

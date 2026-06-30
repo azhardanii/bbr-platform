@@ -11,9 +11,18 @@ export async function PATCH(req: Request) {
 
     const body = await req.json();
     
-    // Server-side simple validation
-    if (!body.nama_lengkap || !body.universitas || !body.jurusan) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    // Server-side validation
+    if (!body.nama_lengkap || body.nama_lengkap.length < 3) {
+      return NextResponse.json({ error: "Nama lengkap minimal 3 karakter" }, { status: 400 });
+    }
+    if (!body.universitas) {
+      return NextResponse.json({ error: "Universitas wajib diisi" }, { status: 400 });
+    }
+    if (!body.jurusan) {
+      return NextResponse.json({ error: "Jurusan wajib diisi" }, { status: 400 });
+    }
+    if (body.punya_judul && (!body.judul_skripsi || body.judul_skripsi.length < 20)) {
+      return NextResponse.json({ error: "Judul minimal 20 karakter" }, { status: 400 });
     }
 
     const updatedUser = await prisma.user.update({
@@ -26,7 +35,7 @@ export async function PATCH(req: Request) {
         semester: Number(body.semester),
         punya_judul: body.punya_judul,
         judul_skripsi: body.punya_judul ? body.judul_skripsi : null,
-        preferred_ai: body.preferred_ai,
+        // preferred_ai is no longer collected - AI is built-in now
         onboarding_completed: true,
       },
     });

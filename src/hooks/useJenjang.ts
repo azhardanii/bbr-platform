@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 
 export function useJenjang() {
   const [jenjang, setJenjang] = useState<string>("S1");
+  const [jurusan, setJurusan] = useState<string>("");
+  const [judulTugasAkhir, setJudulTugasAkhir] = useState<string>("");
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -12,6 +14,8 @@ export function useJenjang() {
         try {
           const parsed = JSON.parse(ob);
           if (parsed.jenjang) setJenjang(parsed.jenjang);
+          if (parsed.jurusan) setJurusan(parsed.jurusan);
+          if (parsed.judulTugasAkhir) setJudulTugasAkhir(parsed.judulTugasAkhir);
         } catch (e) {}
       }
 
@@ -22,6 +26,8 @@ export function useJenjang() {
           try {
             const parsed = JSON.parse(newOb);
             if (parsed.jenjang) setJenjang(parsed.jenjang);
+            if (parsed.jurusan) setJurusan(parsed.jurusan);
+            if (parsed.judulTugasAkhir) setJudulTugasAkhir(parsed.judulTugasAkhir);
           } catch (e) {}
         }
       };
@@ -37,5 +43,33 @@ export function useJenjang() {
     return "Skripsi";
   };
 
-  return { jenjang, label: getLabel(), labelLower: getLabel().toLowerCase() };
+  const saveJudul = (judul: string) => {
+    setJudulTugasAkhir(judul);
+    const ob = localStorage.getItem("bbr_onboarding");
+    let parsed = {};
+    if (ob) {
+      try {
+        parsed = JSON.parse(ob);
+      } catch (e) {}
+    }
+    const newData = { ...parsed, judulTugasAkhir: judul };
+    localStorage.setItem("bbr_onboarding", JSON.stringify(newData));
+    window.dispatchEvent(new Event("storage"));
+  };
+
+  const removeJudul = () => {
+    setJudulTugasAkhir("");
+    const ob = localStorage.getItem("bbr_onboarding");
+    let parsed: any = {};
+    if (ob) {
+      try {
+        parsed = JSON.parse(ob);
+      } catch (e) {}
+    }
+    delete parsed.judulTugasAkhir;
+    localStorage.setItem("bbr_onboarding", JSON.stringify(parsed));
+    window.dispatchEvent(new Event("storage"));
+  };
+
+  return { jenjang, jurusan, judulTugasAkhir, saveJudul, removeJudul, label: getLabel(), labelLower: getLabel().toLowerCase() };
 }
