@@ -21,24 +21,28 @@ const backupAi = new GoogleGenAI({
   apiKey: process.env.GOOGLE_GENAI_API_KEY_BACKUP || "dummy-key-to-prevent-crash",
 });
 
+// Save original methods BEFORE overriding
+const originalPrimaryCreate = primaryAi.interactions.create.bind(primaryAi.interactions);
+const originalBackupCreate = backupAi.interactions.create.bind(backupAi.interactions);
+
 // Robust Auto-fallback for API Keys and Models
 const executeWithFallback = async (options: any) => {
   const isQuotaError = (err: any) => err?.status === 429 || err?.message?.includes("429") || err?.message?.toLowerCase().includes("quota");
   
   const attempts = [
-    { client: primaryAi, model: options.model, name: "Primary API Key" },
+    { createFn: originalPrimaryCreate, model: options.model, name: "Primary API Key" },
   ];
   
   if (process.env.GOOGLE_GENAI_API_KEY_BACKUP) {
-    attempts.push({ client: backupAi, model: options.model, name: "Backup API Key" });
+    attempts.push({ createFn: originalBackupCreate, model: options.model, name: "Backup API Key" });
   }
 
   // Model fallbacks if the requested model hits limit everywhere
   // Fallback map: REASONING -> CREATIVE
   if (options.model === MODELS.REASONING) {
-    attempts.push({ client: primaryAi, model: MODELS.CREATIVE, name: "Primary API Key (Fallback Model)" });
+    attempts.push({ createFn: originalPrimaryCreate, model: MODELS.CREATIVE, name: "Primary API Key (Fallback Model)" });
     if (process.env.GOOGLE_GENAI_API_KEY_BACKUP) {
-      attempts.push({ client: backupAi, model: MODELS.CREATIVE, name: "Backup API Key (Fallback Model)" });
+      attempts.push({ createFn: originalBackupCreate, model: MODELS.CREATIVE, name: "Backup API Key (Fallback Model)" });
     }
   }
 
@@ -47,12 +51,11 @@ const executeWithFallback = async (options: any) => {
     try {
       if (attempt.model !== options.model) {
         console.warn(`[AI Fallback] Retrying with fallback model ${attempt.model} using ${attempt.name}`);
-      } else if (attempt.client === backupAi) {
+      } else if (attempt.name.includes("Backup")) {
         console.warn(`[AI Fallback] Retrying with ${attempt.name}`);
       }
       
-      const createFn = attempt.client.interactions.create.bind(attempt.client.interactions);
-      return await createFn({ ...options, model: attempt.model });
+      return await attempt.createFn({ ...options, model: attempt.model });
     } catch (err: any) {
       lastError = err;
       if (isQuotaError(err)) {
