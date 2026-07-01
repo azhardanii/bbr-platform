@@ -113,7 +113,7 @@ ${formData.abstrak}
       )}
 
       {!hasStarted && (
-        <Link href="/dashboard/sidang/arena" className="block group">
+        <Link href="/sidang/arena" className="block group">
           <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-200 p-5 rounded-2xl flex flex-col sm:flex-row items-center gap-4 sm:justify-between hover:shadow-md hover:border-amber-400 transition-all cursor-pointer">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center text-amber-700 shrink-0">

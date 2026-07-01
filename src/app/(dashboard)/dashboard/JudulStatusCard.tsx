@@ -111,7 +111,7 @@ export default function JudulStatusCard() {
             </p>
 
             <Link
-              href="/dashboard/tools/judul-finder"
+              href="/tools/judul-finder"
               className="px-6 py-3.5 bg-white text-[var(--color-brand-600)] text-sm font-semibold rounded-xl flex items-center justify-center gap-2 hover:bg-[var(--color-brand-50)] transition-transform hover:scale-105 shadow-sm"
             >
               <Search size={18} /> Evaluasi Judul Sekarang
@@ -172,7 +172,7 @@ export default function JudulStatusCard() {
           Tulis Judul
         </button>
         <Link
-          href="/dashboard/tools/judul-finder"
+          href="/tools/judul-finder"
           className="w-full sm:w-auto px-6 py-3 bg-[var(--color-brand-600)] text-white text-sm font-semibold rounded-xl text-center hover:bg-[var(--color-brand-500)] transition-colors shadow-sm"
         >
           Temukan Judul &rarr;

@@ -38,20 +38,20 @@ export default async function DashboardPage() {
       <div>
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-semibold text-lg text-[var(--color-text-primary)]">Mulai Mengerjakan</h2>
-          <Link href="/dashboard/tools" className="text-sm font-semibold text-[var(--color-brand-600)] hover:underline flex items-center gap-1">
+          <Link href="/tools" className="text-sm font-semibold text-[var(--color-brand-600)] hover:underline flex items-center gap-1">
             Lihat Semua Tools <ArrowRight size={14} />
           </Link>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <Link href="/dashboard/sidang/arena" className="p-4 bg-[var(--color-bg-surface)] border border-[var(--color-bg-muted)] rounded-xl hover:border-[var(--color-brand-400)] transition-colors group">
+          <Link href="/sidang/arena" className="p-4 bg-[var(--color-bg-surface)] border border-[var(--color-bg-muted)] rounded-xl hover:border-[var(--color-brand-400)] transition-colors group">
             <h3 className="font-semibold text-[var(--color-text-primary)] group-hover:text-[var(--color-brand-600)] transition-colors">🎯 Arena Sidang</h3>
             <p className="text-xs text-[var(--color-text-secondary)] mt-1.5">Pelajari 200+ bocoran jebakan dosen penguji.</p>
           </Link>
-          <Link href="/dashboard/tools/parafrase" className="p-4 bg-[var(--color-bg-surface)] border border-[var(--color-bg-muted)] rounded-xl hover:border-[var(--color-brand-400)] transition-colors group">
+          <Link href="/tools/parafrase" className="p-4 bg-[var(--color-bg-surface)] border border-[var(--color-bg-muted)] rounded-xl hover:border-[var(--color-brand-400)] transition-colors group">
             <h3 className="font-semibold text-[var(--color-text-primary)] group-hover:text-[var(--color-brand-600)] transition-colors">🔄 Parafrase Tool</h3>
             <p className="text-xs text-[var(--color-text-secondary)] mt-1.5">Ubah gaya bahasa tanpa menghilangkan makna.</p>
           </Link>
-          <Link href="/dashboard/tools/script-wa" className="p-4 bg-[var(--color-bg-surface)] border border-[var(--color-bg-muted)] rounded-xl hover:border-[var(--color-brand-400)] transition-colors group">
+          <Link href="/tools/script-wa" className="p-4 bg-[var(--color-bg-surface)] border border-[var(--color-bg-muted)] rounded-xl hover:border-[var(--color-brand-400)] transition-colors group">
             <h3 className="font-semibold text-[var(--color-text-primary)] group-hover:text-[var(--color-brand-600)] transition-colors">💬 Script WA Dosen</h3>
             <p className="text-xs text-[var(--color-text-secondary)] mt-1.5">Template chat dosen sopan & anti-drama.</p>
           </Link>

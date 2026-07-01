@@ -65,7 +65,7 @@ Jelaskan dengan bahasa yang mudah dipahami mahasiswa yang awam statistik.`;
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
-      <Link href="/dashboard/tools" className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--color-text-secondary)] hover:text-[var(--color-brand-600)] transition-colors mb-2">
+      <Link href="/tools" className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--color-text-secondary)] hover:text-[var(--color-brand-600)] transition-colors mb-2">
         <ArrowLeft size={16} /> Kembali
       </Link>
       <div>
@@ -187,7 +187,7 @@ Jelaskan dengan bahasa yang mudah dipahami mahasiswa yang awam statistik.`;
           {completion && !isLoading && (
             <div className="mt-6 pt-4 border-t border-[var(--color-bg-muted)]">
               <Link
-                href="/dashboard/tools/spss-pls"
+                href="/tools/spss-pls"
                 className="w-full py-3 bg-[var(--color-bg-surface)] border-2 border-[var(--color-brand-200)] text-[var(--color-brand-600)] font-semibold rounded-xl hover:bg-[var(--color-brand-50)] transition-colors flex items-center justify-center gap-2"
               >
                 Lanjut ke SPSS Interpreter <ArrowRight size={16} />

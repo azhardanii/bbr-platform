@@ -65,7 +65,7 @@ export default function VaultWidget() {
           </div>
         </div>
         <Link
-          href="/dashboard/tools/vault"
+          href="/tools/vault"
           className="w-full sm:w-auto px-6 py-2.5 bg-[var(--color-brand-600)] text-white text-sm font-semibold rounded-xl text-center hover:bg-[var(--color-brand-500)] transition-colors shrink-0"
         >
           Mulai Upload Draf &rarr;
@@ -82,7 +82,7 @@ export default function VaultWidget() {
     <div>
       <div className="flex items-center justify-between mb-4">
         <h2 className="font-semibold text-lg text-[var(--color-text-primary)]">Draf {label} Terkini</h2>
-        <Link href="/dashboard/tools/vault" className="text-sm font-semibold text-[var(--color-brand-600)] hover:underline">
+        <Link href="/tools/vault" className="text-sm font-semibold text-[var(--color-brand-600)] hover:underline">
           Lihat Riwayat &rarr;
         </Link>
       </div>
@@ -105,7 +105,7 @@ export default function VaultWidget() {
         </div>
         <div className="w-full sm:w-auto flex gap-2 shrink-0 mt-2 sm:mt-0">
           <Link
-            href="/dashboard/tools/vault"
+            href="/tools/vault"
             className="flex-1 sm:flex-none px-4 py-2.5 bg-white border border-[var(--color-bg-muted)] text-[var(--color-text-primary)] text-sm font-semibold rounded-xl text-center hover:bg-[var(--color-bg-surface)] transition-colors"
           >
             Update File

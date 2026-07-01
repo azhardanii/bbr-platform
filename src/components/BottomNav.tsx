@@ -9,9 +9,9 @@ export default function BottomNav() {
 
   const links = [
     { href: "/dashboard", label: "Beranda", icon: Home },
-    { href: "/dashboard/tools", label: "Tools", icon: Wrench },
-    { href: "/dashboard/sidang", label: "Sidang", icon: GraduationCap },
-    { href: "/dashboard/profil", label: "Profil", icon: User },
+    { href: "/tools", label: "Tools", icon: Wrench },
+    { href: "/sidang", label: "Sidang", icon: GraduationCap },
+    { href: "/profil", label: "Profil", icon: User },
   ];
 
   return (

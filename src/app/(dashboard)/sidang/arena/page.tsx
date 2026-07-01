@@ -65,7 +65,7 @@ export default function ArenaSidangPage() {
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 pb-10">
       
       {/* Back Button */}
-      <Link href="/dashboard/sidang" className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--color-text-secondary)] hover:text-[var(--color-brand-600)] transition-colors mb-2">
+      <Link href="/sidang" className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--color-text-secondary)] hover:text-[var(--color-brand-600)] transition-colors mb-2">
         <ArrowLeft size={16} /> Kembali
       </Link>
 
@@ -122,7 +122,7 @@ export default function ArenaSidangPage() {
                   "Kunci menjawab pertanyaan ini adalah tetap tenang, jangan berdebat, dan kembalikan argumen ke batasan masalah/teori utama penelitianmu."
                 </p>
                 <Link 
-                  href="/dashboard/sidang" 
+                  href="/sidang" 
                   className="w-full py-2.5 bg-white border border-[var(--color-brand-600)] text-[var(--color-brand-600)] text-sm font-semibold rounded-lg hover:bg-[var(--color-brand-50)] transition-colors flex items-center justify-center gap-2"
                 >
                   Latih Menjawab di Simulator <ArrowRight size={16} />

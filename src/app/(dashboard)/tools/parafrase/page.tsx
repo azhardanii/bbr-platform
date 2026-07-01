@@ -99,7 +99,7 @@ Format output persis seperti ini di awal respons:
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 pb-12">
-      <Link href="/dashboard/tools" className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--color-text-secondary)] hover:text-[var(--color-brand-600)] transition-colors mb-2">
+      <Link href="/tools" className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--color-text-secondary)] hover:text-[var(--color-brand-600)] transition-colors mb-2">
         <ArrowLeft size={16} /> Kembali
       </Link>
       <div>
