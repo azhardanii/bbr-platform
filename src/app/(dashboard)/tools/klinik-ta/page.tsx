@@ -4,12 +4,6 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { CheckSquare, Square, ChevronDown, ChevronUp, ArrowLeft, UploadCloud, Loader2, Sparkles, CheckCircle2, XCircle, FileText, Info } from "lucide-react";
 import { useJenjang } from "@/hooks/useJenjang";
-import * as pdfjsLib from 'pdfjs-dist';
-
-// Setting up the PDF.js worker from CDN
-if (typeof window !== "undefined") {
-  pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
-}
 
 export default function AntiRevisiPage() {
   const { label, labelLower } = useJenjang();
@@ -104,6 +98,9 @@ export default function AntiRevisiPage() {
   const progressPct = Math.round((completedItems / totalItems) * 100);
 
   const extractTextFromPDF = async (file: File) => {
+    const pdfjsLib = await import('pdfjs-dist');
+    pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+    
     const arrayBuffer = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
     let fullText = "";
