@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FileSearch, Type, Network, Calculator } from "lucide-react";
+import { FileSearch, Type, Network, Calculator, ShieldCheck } from "lucide-react";
 import { useJenjang } from "@/hooks/useJenjang";
 
 export default function ToolsPage() {
@@ -41,12 +41,13 @@ export default function ToolsPage() {
       bg: "bg-orange-50",
     },
     {
-      title: "Anti-Revisi Kit",
-      desc: "Checklist mandiri sebelum bimbingan untuk minimalkan revisi.",
-      icon: FileSearch,
-      href: "/tools/anti-revisi",
-      color: "text-red-600",
-      bg: "bg-red-50",
+      id: "klinik-ta",
+      title: "Klinik Tugas Akhir",
+      desc: "Check-up kesehatan draf tugas akhir mu dan dapatkan resep perbaikan.",
+      icon: ShieldCheck,
+      href: "/tools/klinik-ta",
+      color: "text-rose-600",
+      bg: "bg-rose-50"
     },
     {
       title: "SPSS/PLS Interpreter",

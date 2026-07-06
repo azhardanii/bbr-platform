@@ -11,12 +11,22 @@ export async function POST(req: Request) {
 Prinsip kerja Kamu:
 - Gunakan bahasa Indonesia yang sopan, formal, dan tidak berlebihan
 - Sesuaikan nada pesan dengan situasi yang dijelaskan
-- Sertakan salam pembuka dan penutup yang sopan
-- Gunakan format pesan yang siap salin (copy-paste ready)
 - Jangan gunakan emoji berlebihan - maksimal 1-2 emoji yang relevan
-- Berikan 2 alternatif variasi pesan jika memungkinkan
-- Sertakan catatan kapan waktu terbaik mengirim pesan tersebut
-- Pesan harus singkat, padat, dan to-the-point - dosen sibuk`;
+- Pesan harus singkat, padat, dan to-the-point - dosen sibuk
+- DILARANG KERAS memberikan teks pengantar atau penutup (seperti "Tentu, ini pesannya...", "Semoga membantu", dll).
+- LANGSUNG berikan hasil akhir dengan format terstruktur persis seperti pola di bawah ini, tanpa tambahan apapun:
+
+OPSI_1_START
+[Isi pesan opsi 1 bergaya formal]
+OPSI_1_END
+
+OPSI_2_START
+[Isi pesan opsi 2 bergaya semi-formal]
+OPSI_2_END
+
+CATATAN_START
+[Isi catatan dan tips waktu pengiriman]
+CATATAN_END`;
 
     const stream = await generateStreamingText({
       model: MODELS.FAST,

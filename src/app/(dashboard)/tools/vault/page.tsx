@@ -115,9 +115,9 @@ export default function VaultPage() {
         <button
           onClick={() => fileInputRef.current?.click()}
           disabled={isUploading}
-          className="px-6 py-2.5 bg-[var(--color-brand-600)] text-white font-semibold rounded-xl hover:bg-[var(--color-brand-500)] transition-colors disabled:opacity-50 shadow-sm"
+          className="px-6 py-3 bg-[var(--color-brand-600)] text-white font-semibold rounded-xl hover:bg-[var(--color-brand-500)] transition-colors shadow-sm inline-flex items-center gap-2"
         >
-          Pilih File Skripsi
+          <UploadCloud size={18} /> Pilih File {label}
         </button>
         <input
           type="file"

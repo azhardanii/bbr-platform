@@ -16,6 +16,7 @@ export default function OnboardingPage() {
     punyaJudul: "Belum",
     judulSkripsi: "",
   });
+  const [agreed, setAgreed] = useState(false);
 
   const handleNext = () => {
     if (step < 3) setStep(step + 1);
@@ -153,7 +154,13 @@ export default function OnboardingPage() {
                 </p>
               </div>
               <label className="flex items-start gap-3 mt-4 cursor-pointer p-2">
-                <input type="checkbox" className="mt-1 w-4 h-4 text-[var(--color-brand-600)]" required />
+                <input 
+                  type="checkbox" 
+                  checked={agreed}
+                  onChange={(e) => setAgreed(e.target.checked)}
+                  className="mt-1 w-4 h-4 text-[var(--color-brand-600)]" 
+                  required 
+                />
                 <span className="text-sm font-semibold text-[var(--color-text-body)]">Saya mengerti dan berjanji akan menulis ulang hasil AI dengan bahasa saya sendiri.</span>
               </label>
             </div>
@@ -167,8 +174,9 @@ export default function OnboardingPage() {
               Kembali
             </button>
             <button 
+              disabled={step === 3 && !agreed}
               onClick={step === 3 ? handleFinish : handleNext}
-              className="px-6 py-3 font-semibold rounded-lg bg-[var(--color-brand-600)] text-white hover:bg-[var(--color-brand-500)] transition-colors flex items-center gap-2 shadow-md"
+              className={`px-6 py-3 font-semibold rounded-lg text-white transition-colors flex items-center gap-2 shadow-md ${step === 3 && !agreed ? 'bg-gray-400 cursor-not-allowed' : 'bg-[var(--color-brand-600)] hover:bg-[var(--color-brand-500)]'}`}
             >
               {step === 3 ? 'Mulai Belajar' : 'Lanjut'} <ArrowRight size={18} />
             </button>

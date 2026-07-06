@@ -46,6 +46,9 @@ export default function SidangPage() {
 
     const selectedPersona = PERSONAS.find(p => p.id === formData.dosenPersona);
     
+    const searchParams = new URLSearchParams(window.location.search);
+    const practiceQ = searchParams.get("q");
+
     const systemInstruction = `PERANMU SEKARANG: Kamu adalah dosen penguji sidang tugas akhir bernama "${selectedPersona?.name}".
 Karakteristikmu: ${selectedPersona?.desc}
 Tugas Khususmu: ${selectedPersona?.prompt}
@@ -66,10 +69,12 @@ ${formData.abstrak}
 """`;
 
     setHasStarted(true);
-    await startConversation(
-      systemInstruction,
-      `[SISTEM] Mahasiswa telah memasuki ruang sidang. Silakan mulai sidang dengan menyapa singkat dan langsung ajukan SATU pertanyaan pertama Anda.`
-    );
+    
+    const initialPrompt = practiceQ 
+      ? `[SISTEM] Mahasiswa telah memasuki ruang sidang. Mereka ingin berlatih menjawab pertanyaan spesifik ini: "${practiceQ}". Silakan sapa singkat lalu jadikan pertanyaan tersebut sebagai pertanyaan pertama Anda secara natural.`
+      : `[SISTEM] Mahasiswa telah memasuki ruang sidang. Silakan mulai sidang dengan menyapa singkat dan langsung ajukan SATU pertanyaan pertama Anda.`;
+      
+    await startConversation(systemInstruction, initialPrompt);
   };
 
   const handleEndSession = () => {
@@ -126,7 +131,7 @@ ${formData.abstrak}
               </div>
             </div>
             <div className="w-full sm:w-auto px-6 py-2.5 bg-amber-600 text-white font-semibold rounded-xl flex items-center justify-center gap-2 group-hover:bg-amber-500 transition-colors shadow-sm shrink-0">
-              Masuk ke Arena Sidang <ChevronRight size={18} />
+              Lihat Database Pertanyaan <ChevronRight size={18} />
             </div>
           </div>
         </Link>
