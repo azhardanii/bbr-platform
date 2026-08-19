@@ -44,6 +44,11 @@ model User {
   created_at           DateTime? @default(now()) @db.Timestamptz
   updated_at           DateTime? @default(now()) @db.Timestamptz
 
+  // Relations
+  documents            Document[]
+  references           Reference[]
+  comments             Comment[]
+
   @@map("users")
 }
 
@@ -93,4 +98,124 @@ model WebhookLog {
   created_at  DateTime? @default(now()) @db.Timestamptz
 
   @@map("webhook_logs")
+}
+
+model Document {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id     String    @db.Uuid
+  title       String    @default("Untitled Document")
+  type        String    @default("skripsi") // skripsi | tesis | disertasi
+  target_date DateTime? @db.Timestamptz
+  created_at  DateTime? @default(now()) @db.Timestamptz
+  updated_at  DateTime? @default(now()) @db.Timestamptz
+
+  user        User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  outlines    Outline[]
+  references  Reference[]
+  citations   Citation[]
+  timelines   Timeline[]
+  comments    Comment[]
+
+  @@map("documents")
+}
+
+model Outline {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  document_id String    @db.Uuid
+  title       String
+  order       Int       @default(0)
+  content     String?   // Tiptap JSON or HTML
+  parent_id   String?   @db.Uuid
+  created_at  DateTime? @default(now()) @db.Timestamptz
+  updated_at  DateTime? @default(now()) @db.Timestamptz
+
+  document    Document  @relation(fields: [document_id], references: [id], onDelete: Cascade)
+  parent      Outline?  @relation("OutlineToOutline", fields: [parent_id], references: [id], onDelete: Cascade)
+  children    Outline[] @relation("OutlineToOutline")
+
+  @@map("outlines")
+}
+
+model Reference {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id     String    @db.Uuid // Shared across user's documents
+  document_id String?   @db.Uuid // If tied to a specific doc
+  type        String    // journal | book | website
+  authors     Json?     // Array of authors
+  year        String?
+  title       String
+  source      String?   // Journal name, publisher, etc.
+  doi_url     String?
+  created_at  DateTime? @default(now()) @db.Timestamptz
+
+  user        User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  document    Document? @relation(fields: [document_id], references: [id], onDelete: SetNull)
+  citations   Citation[]
+
+  @@map("references")
+}
+
+model Citation {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  document_id String    @db.Uuid
+  reference_id String   @db.Uuid
+  position    String?   // Location in text
+  format      String?   // e.g. "(Smith, 2023)"
+  created_at  DateTime? @default(now()) @db.Timestamptz
+
+  document    Document  @relation(fields: [document_id], references: [id], onDelete: Cascade)
+  reference   Reference @relation(fields: [reference_id], references: [id], onDelete: Cascade)
+
+  @@map("citations")
+}
+
+model Timeline {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  document_id String    @db.Uuid
+  start_date  DateTime? @db.Timestamptz
+  target_date DateTime? @db.Timestamptz
+  status      String?   @default("active") // active | completed | paused
+  created_at  DateTime? @default(now()) @db.Timestamptz
+  updated_at  DateTime? @default(now()) @db.Timestamptz
+
+  document    Document  @relation(fields: [document_id], references: [id], onDelete: Cascade)
+  milestones  Milestone[]
+
+  @@map("timelines")
+}
+
+model Milestone {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  timeline_id String    @db.Uuid
+  title       String
+  type        String?   @default("custom") // bab | custom
+  target_date DateTime? @db.Timestamptz
+  completed_at DateTime? @db.Timestamptz
+  status      String?   @default("pending") // pending | in_progress | completed | overdue
+  order       Int       @default(0)
+
+  timeline    Timeline  @relation(fields: [timeline_id], references: [id], onDelete: Cascade)
+
+  @@map("milestones")
+}
+
+model Comment {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  document_id String    @db.Uuid
+  author_id   String    @db.Uuid // Can be student or supervisor
+  content     String
+  quote       String?   // The highlighted text
+  position    Json?     // { from: number, to: number }
+  type        String?   @default("suggestion") // revision | suggestion | question
+  status      String?   @default("open") // open | resolved
+  parent_id   String?   @db.Uuid
+  created_at  DateTime? @default(now()) @db.Timestamptz
+  updated_at  DateTime? @default(now()) @db.Timestamptz
+
+  document    Document  @relation(fields: [document_id], references: [id], onDelete: Cascade)
+  author      User      @relation(fields: [author_id], references: [id], onDelete: Cascade)
+  parent      Comment?  @relation("CommentToComment", fields: [parent_id], references: [id], onDelete: Cascade)
+  replies     Comment[] @relation("CommentToComment")
+
+  @@map("comments")
 }
