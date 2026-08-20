@@ -2,6 +2,9 @@
 
 @theme {
   /* Brand */
+  --color-brand-900: #380B0B;
+  --color-brand-800: #521313;
+  --color-brand-700: #651818;
   --color-brand-600: #7B2020;
   --color-brand-500: #9B3535;
   --color-brand-400: #B85A5A;
@@ -59,11 +62,87 @@ body {
 ::-webkit-scrollbar-thumb {
   background: var(--color-brand-400);
   border-radius: 4px;
-  border: 2px solid var(--color-bg-muted);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--color-brand-600);
+  background: var(--color-brand-500);
+}
+
+/* ========================================================================= */
+/* Tiptap & ProseMirror Academic Table & Image Typography Styles */
+/* ========================================================================= */
+.tiptap table,
+.ProseMirror table {
+  border-collapse: collapse !important;
+  table-layout: fixed !important;
+  width: 100% !important;
+  margin: 1.5rem 0 !important;
+  overflow: hidden !important;
+  border: 1px solid #71717a !important;
+}
+
+.tiptap table td,
+.tiptap table th,
+.ProseMirror table td,
+.ProseMirror table th {
+  min-width: 1em !important;
+  border: 1px solid #71717a !important;
+  padding: 8px 12px !important;
+  vertical-align: top !important;
+  box-sizing: border-box !important;
+  position: relative !important;
+  text-align: left !important;
+  font-size: 11pt !important;
+}
+
+.tiptap table th,
+.ProseMirror table th {
+  font-weight: bold !important;
+  text-align: left !important;
+  background-color: #f4f4f5 !important;
+  color: #18181b !important;
+}
+
+.tiptap table .selectedCell:after,
+.ProseMirror table .selectedCell:after {
+  z-index: 2;
+  position: absolute;
+  content: "";
+  left: 0; right: 0; top: 0; bottom: 0;
+  background: rgba(200, 200, 255, 0.4);
+  pointer-events: none;
+}
+
+.tiptap table .column-resize-handle,
+.ProseMirror table .column-resize-handle {
+  position: absolute;
+  right: -2px;
+  top: 0;
+  bottom: -2px;
+  width: 4px;
+  background-color: #6366f1;
+  pointer-events: none;
+}
+
+.tiptap img,
+.ProseMirror img {
+  display: block;
+  height: auto;
+  margin: 1.5rem auto;
+  max-width: 100%;
+  border-radius: 0.5rem;
+  border: 1px solid #e4e4e7;
+}
+
+.tiptap img.ProseMirror-selectednode,
+.ProseMirror img.ProseMirror-selectednode {
+  outline: 3px solid #6366f1;
+}
+
+.tiptap table p,
+.ProseMirror table p {
+  margin: 0 !important;
+  text-indent: 0 !important;
 }
 
 /* For generic custom-scrollbar class if needed explicitly */

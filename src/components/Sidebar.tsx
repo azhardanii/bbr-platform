@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Wrench, GraduationCap, User, LogOut } from "lucide-react";
+import { Home, FileEdit, Wrench, GraduationCap, User, LogOut } from "lucide-react";
 
 export default function Sidebar() {
   const pathname = usePathname();
 
   const links = [
     { href: "/dashboard", label: "Beranda", icon: Home },
+    { href: "/workspace", label: "Workspace", icon: FileEdit, badge: "Draf" },
     { href: "/tools", label: "Tools", icon: Wrench },
     { href: "/sidang", label: "Sidang", icon: GraduationCap },
     { href: "/profil", label: "Profil", icon: User },
@@ -28,14 +29,21 @@ export default function Sidebar() {
             <Link
               key={link.href}
               href={link.href}
-              className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors font-medium ${
+              className={`flex items-center justify-between px-4 py-3 rounded-lg transition-colors font-medium ${
                 isActive 
                   ? "bg-[var(--color-brand-100)] text-[var(--color-brand-600)] border-l-4 border-[var(--color-brand-600)]" 
                   : "text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-muted)] border-l-4 border-transparent"
               }`}
             >
-              <link.icon size={20} className={isActive ? "text-[var(--color-brand-600)]" : "text-[var(--color-text-secondary)]"} />
-              {link.label}
+              <div className="flex items-center gap-3">
+                <link.icon size={20} className={isActive ? "text-[var(--color-brand-600)]" : "text-[var(--color-text-secondary)]"} />
+                <span>{link.label}</span>
+              </div>
+              {link.badge && !isActive && (
+                <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded-full bg-[var(--color-brand-50)] text-[var(--color-brand-600)] border border-[var(--color-brand-200)]">
+                  {link.badge}
+                </span>
+              )}
             </Link>
           );
         })}

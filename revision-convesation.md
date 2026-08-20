@@ -69,7 +69,7 @@ Reference Library: Repositori penyimpanan referensi (jurnal, buku, situs web) ya
 Search & Fetch Metadata: Pencarian dan penambahan metadata referensi secara otomatis menggunakan nomor DOI atau judul jurnal via integrasi API eksternal.
 In-text Citation Engine: Menyisipkan kode atau penanda sitasi di draf tulisan secara real-time.
 Bibliography Generator: Penyusunan daftar pustaka otomatis yang disaring cerdas hanya menampilkan referensi yang benar-benar dikutip (cited) di dalam teks naskah.
-Style Switching Engine: Mengubah gaya penulisan daftar pustaka (APA, MLA, Chicago, dll.) secara instan tanpa menginput ulang data sitasi.
+Style Switching Engine & Custom Formatting: Sistem menyediakan pilihan template gaya penulisan daftar pustaka standar (APA, MLA, Chicago, IEEE, dll.) secara instan. Selain itu, terdapat fitur bagi pengguna untuk mengatur/memodifikasi secara kustom (custom format) tampilan daftar pustaka sesuai dengan pedoman spesifik kampus jika ada perbedaan detail dari standar umum.
 Consistency Checker: Validasi silang otomatis antara sitasi aktif di dalam teks dengan daftar pustaka di bagian akhir.
 Progress Tracker & Milestone Generator:
 Ceklis progres penulisan bab.

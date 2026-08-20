@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FileSearch, Type, Network, Calculator, ShieldCheck } from "lucide-react";
+import { FileSearch, Type, Network, Calculator, ShieldCheck, Languages } from "lucide-react";
 import { useJenjang } from "@/hooks/useJenjang";
 
 export default function ToolsPage() {
@@ -64,6 +64,14 @@ export default function ToolsPage() {
       href: "/tools/script-wa",
       color: "text-emerald-600",
       bg: "bg-emerald-50",
+    },
+    {
+      title: "Terjemah Draf Akademis",
+      desc: "Terjemahkan draf naskahmu antara Bahasa Indonesia dan Bahasa Inggris akademis. Ideal untuk publikasi jurnal internasional.",
+      icon: Languages,
+      href: "/tools/terjemah-draf",
+      color: "text-indigo-600",
+      bg: "bg-indigo-50",
     }
   ];
 

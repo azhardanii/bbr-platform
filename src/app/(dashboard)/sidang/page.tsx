@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
-import { GraduationCap, Loader2, Send, Sword, ChevronRight, ArrowLeft, XCircle, User } from "lucide-react";
+import { GraduationCap, Loader2, Send, Sword, ChevronRight, ArrowLeft, XCircle, User, Mic, MicOff, Volume2, VolumeX } from "lucide-react";
 import { useAIChat } from "@/hooks/useAIChat";
 import { useJenjang } from "@/hooks/useJenjang";
 import ReactMarkdown from "react-markdown";
@@ -21,19 +21,192 @@ const PERSONAS = [
 
 export default function SidangPage() {
   const { label, labelLower, judulTugasAkhir } = useJenjang();
-  const [formData, setFormData] = useState({
-    abstrak: "",
-    dosenPersona: 1,
-  });
-
-  const { messages, input, setInput, isLoading, error, sendMessage, startConversation, reset } = useAIChat({
-    api: "/api/ai/sidang",
-  });
-
+  const [formData, setFormData] = useState({ abstrak: "", dosenPersona: 1 });
+  const { messages, input, setInput, isLoading, error, sendMessage, startConversation, reset } = useAIChat({ api: "/api/ai/sidang" });
   const [hasStarted, setHasStarted] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll to bottom when new messages arrive
+  // Voice states - default to true as requested
+  const [voiceEnabled, setVoiceEnabled] = useState(true);
+  const [isListening, setIsListening] = useState(false);
+  const [sttSupported, setSttSupported] = useState(false);
+  const [playingMsgId, setPlayingMsgId] = useState<string | null>(null);
+  const recognitionRef = useRef<any>(null);
+  const transcriptRef = useRef<string>("");
+  const lastSpokenMsgIdRef = useRef<string | null>(null);
+  const currentAudioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Check browser support
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setSttSupported("SpeechRecognition" in window || "webkitSpeechRecognition" in window);
+      
+      // Preload voices for fallback
+      if ("speechSynthesis" in window) {
+        window.speechSynthesis.getVoices();
+        window.speechSynthesis.onvoiceschanged = () => {
+          window.speechSynthesis.getVoices();
+        };
+      }
+    }
+  }, []);
+
+  const stopAudio = useCallback(() => {
+    if (currentAudioRef.current) {
+      currentAudioRef.current.pause();
+      currentAudioRef.current.currentTime = 0;
+      currentAudioRef.current = null;
+    }
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+    }
+    setPlayingMsgId(null);
+  }, []);
+
+  const playIndonesianVoice = useCallback((text: string, msgId?: string) => {
+    if (typeof window === "undefined") return;
+
+    // Stop any existing audio
+    stopAudio();
+
+    const cleanText = text
+      .replace(/\[SISTEM\]/gi, "")
+      .replace(/\*\*(.*?)\*\*/g, "$1")
+      .replace(/\*(.*?)\*/g, "$1")
+      .replace(/#{1,6}\s/g, "")
+      .replace(/`([^`]*)`/g, "$1")
+      .replace(/<[^>]*>/g, "")
+      .trim();
+
+    if (!cleanText) return;
+
+    if (msgId) setPlayingMsgId(msgId);
+
+    // Primary: High-fidelity natural Indonesian audio via /api/ai/tts
+    const audioUrl = `/api/ai/tts?text=${encodeURIComponent(cleanText)}`;
+    const audio = new Audio(audioUrl);
+    currentAudioRef.current = audio;
+
+    audio.onended = () => {
+      setPlayingMsgId(null);
+      currentAudioRef.current = null;
+    };
+
+    audio.onerror = () => {
+      console.warn("Server TTS playback error, attempting browser SpeechSynthesis fallback...");
+      // Fallback to browser SpeechSynthesis with Indonesian voice
+      if ("speechSynthesis" in window) {
+        const utterance = new SpeechSynthesisUtterance(cleanText);
+        utterance.lang = "id-ID";
+        const voices = window.speechSynthesis.getVoices();
+        const idVoice = voices.find((v) => v.lang.toLowerCase().includes("id"));
+        if (idVoice) utterance.voice = idVoice;
+        utterance.onend = () => setPlayingMsgId(null);
+        utterance.onerror = () => setPlayingMsgId(null);
+        window.speechSynthesis.speak(utterance);
+      } else {
+        setPlayingMsgId(null);
+      }
+    };
+
+    audio.play().catch((err) => {
+      console.warn("Audio autoplay blocked or failed:", err);
+      // Browser autoplay policy might require fallback
+      if ("speechSynthesis" in window) {
+        const utterance = new SpeechSynthesisUtterance(cleanText);
+        utterance.lang = "id-ID";
+        const voices = window.speechSynthesis.getVoices();
+        const idVoice = voices.find((v) => v.lang.toLowerCase().includes("id"));
+        if (idVoice) utterance.voice = idVoice;
+        utterance.onend = () => setPlayingMsgId(null);
+        utterance.onerror = () => setPlayingMsgId(null);
+        window.speechSynthesis.speak(utterance);
+      } else {
+        setPlayingMsgId(null);
+      }
+    });
+  }, [stopAudio]);
+
+  // Automatically speak when a new response finishes streaming if voiceEnabled is true
+  useEffect(() => {
+    if (!voiceEnabled || isLoading) return;
+    const assistantMessages = messages.filter(
+      (m) => m.role === "assistant" && m.content.trim().length > 0
+    );
+    if (assistantMessages.length === 0) return;
+    const latest = assistantMessages[assistantMessages.length - 1];
+    if (latest.id === lastSpokenMsgIdRef.current) return;
+    lastSpokenMsgIdRef.current = latest.id;
+
+    playIndonesianVoice(latest.content, latest.id);
+  }, [messages, voiceEnabled, isLoading, playIndonesianVoice]);
+
+  // Stop audio when voiceEnabled is toggled off
+  useEffect(() => {
+    if (!voiceEnabled) {
+      stopAudio();
+    }
+  }, [voiceEnabled, stopAudio]);
+
+  const startListening = useCallback(() => {
+    if (!sttSupported || isListening) return;
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'id-ID';
+    recognition.interimResults = true;
+    recognition.maxAlternatives = 1;
+    recognition.continuous = false;
+
+    transcriptRef.current = "";
+
+    recognition.onresult = (event: any) => {
+      let currentTranscript = "";
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        currentTranscript += event.results[i][0].transcript;
+      }
+      if (currentTranscript.trim()) {
+        transcriptRef.current = currentTranscript;
+        setInput(currentTranscript);
+      }
+    };
+
+    recognition.onerror = (e: any) => {
+      console.warn("STT recognition error:", e);
+      setIsListening(false);
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+      const finalText = transcriptRef.current.trim();
+      if (finalText) {
+        // Automatically send the voice note message directly without extra clicks
+        sendMessage(finalText);
+        transcriptRef.current = "";
+        setInput("");
+      }
+    };
+
+    recognitionRef.current = recognition;
+    try {
+      recognition.start();
+      setIsListening(true);
+    } catch (err) {
+      console.warn("Failed to start speech recognition:", err);
+      setIsListening(false);
+    }
+  }, [sttSupported, isListening, setInput, sendMessage]);
+
+  const stopListening = useCallback(() => {
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch (err) {
+        console.warn("Error stopping recognition:", err);
+      }
+    }
+    setIsListening(false);
+  }, []);
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -43,9 +216,7 @@ export default function SidangPage() {
       alert("Mohon pastikan judul sudah tersimpan dan abstrak telah diisi.");
       return;
     }
-
     const selectedPersona = PERSONAS.find(p => p.id === formData.dosenPersona);
-    
     const searchParams = new URLSearchParams(window.location.search);
     const practiceQ = searchParams.get("q");
 
@@ -69,11 +240,10 @@ ${formData.abstrak}
 """`;
 
     setHasStarted(true);
-    
-    const initialPrompt = practiceQ 
+    const initialPrompt = practiceQ
       ? `[SISTEM] Mahasiswa telah memasuki ruang sidang. Mereka ingin berlatih menjawab pertanyaan spesifik ini: "${practiceQ}". Silakan sapa singkat lalu jadikan pertanyaan tersebut sebagai pertanyaan pertama Anda secara natural.`
       : `[SISTEM] Mahasiswa telah memasuki ruang sidang. Silakan mulai sidang dengan menyapa singkat dan langsung ajukan SATU pertanyaan pertama Anda.`;
-      
+
     await startConversation(systemInstruction, initialPrompt);
   };
 
@@ -82,13 +252,13 @@ ${formData.abstrak}
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }
   };
 
   const handleReset = () => {
+    window.speechSynthesis?.cancel();
+    recognitionRef.current?.stop();
+    setIsListening(false);
     reset();
     setHasStarted(false);
   };
@@ -107,7 +277,7 @@ ${formData.abstrak}
           <ArrowLeft size={16} /> Kembali
         </Link>
       )}
-      
+
       {!hasStarted && (
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex-1">
@@ -125,9 +295,7 @@ ${formData.abstrak}
                 <Sword size={24} />
               </div>
               <div>
-                <p className="text-sm text-amber-800 mt-0.5">
-                  Belum siap simulasi? Pelajari dulu bocoran 200+ pola pertanyaan jebakan dosen penguji.
-                </p>
+                <p className="text-sm text-amber-800 mt-0.5">Belum siap simulasi? Pelajari dulu bocoran 200+ pola pertanyaan jebakan dosen penguji.</p>
               </div>
             </div>
             <div className="w-full sm:w-auto px-6 py-2.5 bg-amber-600 text-white font-semibold rounded-xl flex items-center justify-center gap-2 group-hover:bg-amber-500 transition-colors shadow-sm shrink-0">
@@ -142,7 +310,6 @@ ${formData.abstrak}
           <h2 className="font-semibold text-lg text-[var(--color-text-primary)] mb-4 flex items-center gap-2">
             <GraduationCap size={20} className="text-[var(--color-brand-600)]" /> Konfigurasi Simulasi
           </h2>
-
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-semibold mb-1 text-[var(--color-text-body)]">Judul Penelitian</label>
@@ -159,6 +326,27 @@ ${formData.abstrak}
                 className="w-full px-4 py-3 rounded-lg border-2 border-[var(--color-bg-muted)] focus:border-[var(--color-brand-600)] outline-none bg-white h-40 resize-y transition-colors"
               />
             </div>
+
+            {/* Voice option */}
+            <div className="flex items-center gap-3 p-4 bg-[var(--color-brand-50)] border border-[var(--color-brand-100)] rounded-xl">
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-[var(--color-text-primary)] flex items-center gap-1.5">
+                  <Volume2 size={16} className="text-[var(--color-brand-600)]" />
+                  Mode Suara Dosen (Bahasa Indonesia Alami)
+                </p>
+                <p className="text-xs text-[var(--color-text-secondary)] mt-0.5">
+                  Dosen AI berbicara langsung dengan pengucapan Bahasa Indonesia yang jernih dan fasih.
+                </p>
+              </div>
+              <button
+                onClick={() => setVoiceEnabled(v => !v)}
+                className={`w-12 h-6 rounded-full transition-all duration-300 relative shrink-0 ${voiceEnabled ? 'bg-[var(--color-brand-600)]' : 'bg-zinc-300'}`}
+                aria-label={voiceEnabled ? 'Matikan mode suara' : 'Aktifkan mode suara'}
+              >
+                <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-300 ${voiceEnabled ? 'translate-x-6' : ''}`} />
+              </button>
+            </div>
+
             <div>
               <label className="block text-sm font-semibold mb-3 text-[var(--color-text-body)]">Pilih Persona Dosen Penguji</label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -172,9 +360,7 @@ ${formData.abstrak}
                       <span className="text-2xl leading-none bg-white/50 p-1.5 rounded-lg border border-[var(--color-bg-muted)]">{p.emoji}</span>
                       <span className={`text-sm font-bold ${formData.dosenPersona === p.id ? 'text-[var(--color-brand-600)]' : 'text-[var(--color-text-primary)]'}`}>{p.name}</span>
                     </div>
-                    <p className={`text-xs mt-1 leading-relaxed ${formData.dosenPersona === p.id ? 'text-[var(--color-brand-600)]' : 'text-[var(--color-text-secondary)]'}`}>
-                      {p.desc}
-                    </p>
+                    <p className={`text-xs mt-1 leading-relaxed ${formData.dosenPersona === p.id ? 'text-[var(--color-brand-600)]' : 'text-[var(--color-text-secondary)]'}`}>{p.desc}</p>
                   </div>
                 ))}
               </div>
@@ -199,20 +385,29 @@ ${formData.abstrak}
 
       {hasStarted && (
         <div className={`bg-[#f8f9fa] border-2 ${theme.border} rounded-2xl shadow-sm animate-in zoom-in-95 duration-300 flex flex-col flex-1 relative overflow-hidden min-h-0`}>
-          {/* Header Terpersonalisasi */}
+          {/* Header */}
           <div className={`p-4 flex items-center justify-between rounded-t-xl bg-gradient-to-r ${activePersona.colorClasses} text-white shadow-md z-10`}>
             <div className="flex items-center gap-3">
               <div className="bg-white/20 p-2 rounded-full text-2xl backdrop-blur-sm border border-white/30">
                 {activePersona.emoji}
               </div>
               <div>
-                <h3 className="font-bold text-base">
-                  {activePersona.name}
-                </h3>
+                <h3 className="font-bold text-base">{activePersona.name}</h3>
                 <p className="text-xs text-white/80 font-medium">Dosen Penguji • Ruang Sidang Virtual</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
+              {/* Voice toggle in chat mode */}
+              <button
+                onClick={() => setVoiceEnabled((v) => !v)}
+                title={voiceEnabled ? "Matikan suara" : "Aktifkan suara dosen"}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-lg flex items-center gap-1 transition-colors border border-white/20 ${
+                  voiceEnabled ? "bg-white/20 hover:bg-white/30" : "bg-black/10 hover:bg-black/20"
+                }`}
+              >
+                {voiceEnabled ? <Volume2 size={14} /> : <VolumeX size={14} />}
+                <span className="hidden sm:inline">{voiceEnabled ? "Suara ON" : "Suara OFF"}</span>
+              </button>
               <button
                 onClick={handleReset}
                 className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-black/10 hover:bg-black/20 flex items-center gap-1 transition-colors border border-white/20"
@@ -222,57 +417,80 @@ ${formData.abstrak}
             </div>
           </div>
 
-          {/* Background pattern for realism */}
-          <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(#000 1px, transparent 1px)', backgroundSize: '20px 20px' }}></div>
+          {/* Background pattern */}
+          <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(#000 1px, transparent 1px)', backgroundSize: '20px 20px' }} />
 
           {/* Messages */}
           <div className="flex-1 overflow-y-auto flex flex-col p-4 custom-scrollbar">
-            {/* Spacer to push messages to the bottom when there are few */}
             <div className="flex-1 min-h-0" />
             <div className="flex flex-col gap-6 shrink-0 mt-4">
               {[...messages]
                 .filter((m) => !m.content.startsWith("[SISTEM]"))
                 .map((m) => {
-                const isUser = m.role === "user";
-                
-                return (
-                  <div key={m.id} className={`flex gap-3 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
-                    {/* Avatar */}
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-1 ${isUser ? `${theme.lightBg} ${theme.text}` : 'bg-white border border-[var(--color-bg-muted)] shadow-sm text-xl'}`}>
-                      {isUser ? <User size={16} /> : activePersona.emoji}
-                    </div>
-
-                    {/* Chat Bubble */}
-                    <div className={`max-w-[80%] p-4 rounded-2xl ${isUser
-                      ? `${theme.bg} text-white rounded-tr-sm`
-                      : 'bg-white text-[var(--color-text-primary)] border border-[var(--color-bg-muted)] shadow-sm rounded-tl-sm'
-                      }`}>
-                      <div className="text-[10px] uppercase tracking-wider mb-1.5 font-bold text-current opacity-70">
-                        {isUser ? 'Kamu' : activePersona.name}
+                  const isUser = m.role === "user";
+                  return (
+                    <div key={m.id} className={`flex gap-3 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-1 ${isUser ? `${theme.lightBg} ${theme.text}` : 'bg-white border border-[var(--color-bg-muted)] shadow-sm text-xl'}`}>
+                        {isUser ? <User size={16} /> : activePersona.emoji}
                       </div>
-                      <div className={`text-sm leading-relaxed ${isUser ? 'whitespace-pre-wrap' : 'prose prose-sm max-w-none prose-p:leading-relaxed prose-p:my-2 prose-pre:bg-transparent prose-pre:p-0 text-current'}`}>
-                        {isUser ? m.content : (
-                          !isUser && m.content === "" && isLoading ? (
-                            <div className="flex gap-1.5 items-center h-6 px-1">
-                              <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                              <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                              <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                            </div>
-                          ) : (
-                            <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown>
-                          )
-                        )}
+                      <div className={`max-w-[80%] p-4 rounded-2xl ${isUser ? `${theme.bg} text-white rounded-tr-sm` : 'bg-white text-[var(--color-text-primary)] border border-[var(--color-bg-muted)] shadow-sm rounded-tl-sm'}`}>
+                        <div className="flex items-center justify-between gap-2 mb-1.5">
+                          <span className="text-[10px] uppercase tracking-wider font-bold text-current opacity-70">
+                            {isUser ? 'Kamu' : activePersona.name}
+                          </span>
+                          {!isUser && m.content && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (playingMsgId === m.id) {
+                                  stopAudio();
+                                } else {
+                                  playIndonesianVoice(m.content, m.id);
+                                }
+                              }}
+                              className={`text-[11px] flex items-center gap-1 transition-colors p-0.5 px-2 rounded-md font-semibold ${
+                                playingMsgId === m.id
+                                  ? "bg-[var(--color-brand-600)] text-white animate-pulse"
+                                  : "text-zinc-500 hover:text-[var(--color-brand-600)] hover:bg-zinc-100"
+                              }`}
+                              title={playingMsgId === m.id ? "Hentikan suara" : "Dengarkan suara dosen fasih berbahasa Indonesia"}
+                            >
+                              {playingMsgId === m.id ? (
+                                <>
+                                  <VolumeX size={12} />
+                                  <span className="text-[10px]">Hentikan</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Volume2 size={12} />
+                                  <span className="text-[10px]">Putar Suara</span>
+                                </>
+                              )}
+                            </button>
+                          )}
+                        </div>
+                        <div className={`text-sm leading-relaxed ${isUser ? 'whitespace-pre-wrap' : 'prose prose-sm max-w-none prose-p:leading-relaxed prose-p:my-2 prose-pre:bg-transparent prose-pre:p-0 text-current'}`}>
+                          {isUser ? m.content : (
+                            !isUser && m.content === "" && isLoading ? (
+                              <div className="flex gap-1.5 items-center h-6 px-1">
+                                <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                                <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                                <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                              </div>
+                            ) : (
+                              <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown>
+                            )
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
             </div>
-            {/* Anchor for auto-scroll */}
             <div ref={messagesEndRef} className="h-4 shrink-0" />
           </div>
 
-          {/* Action buttons */}
+          {/* End session button */}
           <div className="px-4 pb-2">
             <button
               onClick={handleEndSession}
@@ -283,16 +501,31 @@ ${formData.abstrak}
             </button>
           </div>
 
-          {/* Input */}
+          {/* Input area */}
           <div className="p-4 border-t border-[var(--color-bg-muted)] bg-[var(--color-bg-surface)] rounded-b-2xl">
             <div className="flex gap-2">
+              {/* STT mic button */}
+              {sttSupported && (
+                <button
+                  onClick={isListening ? stopListening : startListening}
+                  disabled={isLoading}
+                  title={isListening ? 'Hentikan rekaman' : 'Bicara sebagai jawaban'}
+                  className={`px-3 py-2.5 rounded-xl border transition-colors flex items-center justify-center shrink-0 ${
+                    isListening
+                      ? 'bg-red-500 text-white border-red-500 animate-pulse'
+                      : 'border-[var(--color-bg-muted)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-muted)]'
+                  }`}
+                >
+                  {isListening ? <MicOff size={18} /> : <Mic size={18} />}
+                </button>
+              )}
               <input
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Ketik jawaban Kamu di sini..."
+                placeholder={isListening ? "Sedang mendengarkan..." : "Ketik jawaban Kamu di sini..."}
                 className={`flex-1 px-4 py-2.5 rounded-xl border border-[var(--color-bg-muted)] outline-none text-sm bg-white transition-all ${theme.ring}`}
-                disabled={isLoading}
+                disabled={isLoading || isListening}
               />
               <button
                 onClick={() => sendMessage()}
@@ -302,6 +535,11 @@ ${formData.abstrak}
                 <Send size={18} />
               </button>
             </div>
+            {isListening && (
+              <p className="text-xs text-red-500 font-medium mt-2 text-center animate-pulse">
+                🎤 Sedang merekam... Klik tombol mikrofon untuk berhenti
+              </p>
+            )}
           </div>
         </div>
       )}

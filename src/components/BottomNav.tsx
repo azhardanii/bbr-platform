@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Wrench, GraduationCap, User } from "lucide-react";
+import { Home, FileEdit, Wrench, GraduationCap, User } from "lucide-react";
 
 export default function BottomNav() {
   const pathname = usePathname();
 
   const links = [
     { href: "/dashboard", label: "Beranda", icon: Home },
+    { href: "/workspace", label: "Workspace", icon: FileEdit },
     { href: "/tools", label: "Tools", icon: Wrench },
     { href: "/sidang", label: "Sidang", icon: GraduationCap },
     { href: "/profil", label: "Profil", icon: User },
@@ -25,10 +26,10 @@ export default function BottomNav() {
             className="flex flex-col items-center justify-center w-full h-full relative"
           >
             <link.icon 
-              size={24} 
-              className={`mb-1 transition-colors ${isActive ? "text-[var(--color-brand-600)]" : "text-[var(--color-text-secondary)]"}`} 
+              size={22} 
+              className={`mb-0.5 transition-colors ${isActive ? "text-[var(--color-brand-600)]" : "text-[var(--color-text-secondary)]"}`} 
             />
-            <span className={`text-[11px] transition-colors ${isActive ? "text-[var(--color-brand-600)] font-semibold" : "text-[var(--color-text-secondary)] font-normal"}`}>
+            <span className={`text-[10px] transition-colors ${isActive ? "text-[var(--color-brand-600)] font-semibold" : "text-[var(--color-text-secondary)] font-normal"}`}>
               {link.label}
             </span>
             {isActive && (

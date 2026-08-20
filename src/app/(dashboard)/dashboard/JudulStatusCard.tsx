@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { FileSearch, CheckCircle2, Search, Edit2, Trash2, GraduationCap } from "lucide-react";
+import { FileSearch, CheckCircle2, Search, Edit2, Trash2, GraduationCap, FileEdit } from "lucide-react";
 import { useJenjang } from "@/hooks/useJenjang";
 
 export default function JudulStatusCard() {
@@ -110,12 +110,20 @@ export default function JudulStatusCard() {
               "{judulTugasAkhir}"
             </p>
 
-            <Link
-              href="/tools/judul-finder"
-              className="px-6 py-3.5 bg-white text-[var(--color-brand-600)] text-sm font-semibold rounded-xl flex items-center justify-center gap-2 hover:bg-[var(--color-brand-50)] transition-transform hover:scale-105 shadow-sm"
-            >
-              <Search size={18} /> Evaluasi Judul Sekarang
-            </Link>
+            <div className="flex flex-wrap items-center justify-center gap-3">
+              <Link
+                href="/workspace"
+                className="px-6 py-3.5 bg-white text-[var(--color-brand-600)] text-sm font-bold rounded-xl flex items-center justify-center gap-2 hover:bg-[var(--color-brand-50)] transition-all hover:scale-105 shadow-md"
+              >
+                <FileEdit size={18} /> Buka Workspace & Tulis Naskah
+              </Link>
+              <Link
+                href="/tools/judul-finder"
+                className="px-5 py-3.5 bg-white/15 border border-white/30 text-white text-sm font-semibold rounded-xl flex items-center justify-center gap-2 hover:bg-white/25 transition-colors backdrop-blur-sm"
+              >
+                <Search size={18} /> Evaluasi Judul
+              </Link>
+            </div>
           </div>
         )}
       </div>

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Check } from "lucide-react";
+import Link from "next/link";
+import { Check, ArrowRight, FileEdit } from "lucide-react";
 import { useJenjang } from "@/hooks/useJenjang";
 
 export default function ProgressTracker() {
@@ -37,13 +38,24 @@ export default function ProgressTracker() {
 
   return (
     <div className="bg-[var(--color-bg-surface)] border border-[var(--color-bg-muted)] p-5 md:p-6 rounded-2xl shadow-sm">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="font-semibold text-lg text-[var(--color-text-primary)]">Progress {label}</h2>
-        <span className="text-xs font-medium text-[var(--color-brand-600)] bg-[var(--color-brand-100)] px-2 py-1 rounded-full">Ketuk bar untuk update</span>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-5">
+        <div>
+          <h2 className="font-semibold text-lg text-[var(--color-text-primary)]">Progress {label}</h2>
+          <p className="text-xs text-[var(--color-text-secondary)] mt-0.5">Kelola dan update draf bab tugas akhirmu</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/workspace"
+            className="text-xs font-semibold bg-[var(--color-brand-600)] text-white hover:bg-[var(--color-brand-500)] px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors shadow-sm"
+          >
+            <FileEdit size={14} /> Buka Workspace Naskah <ArrowRight size={12} />
+          </Link>
+        </div>
       </div>
-      <div className="space-y-5">
+      
+      <div className="space-y-4">
         {progress.map((p) => (
-          <div key={p.bab} className="group cursor-pointer" onClick={() => handleUpdate(p.bab)}>
+          <div key={p.bab} className="group cursor-pointer p-2 -mx-2 rounded-xl hover:bg-[var(--color-bg-muted)]/50 transition-colors" onClick={() => handleUpdate(p.bab)}>
             <div className="flex justify-between text-xs font-semibold mb-2">
               <span className="text-[var(--color-text-body)] flex items-center gap-2">
                 Bab {p.bab}
