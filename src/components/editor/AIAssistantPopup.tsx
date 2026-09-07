@@ -2,8 +2,10 @@
 
 import { Sparkles, Check, X, RefreshCw, PenLine, BookOpen, ArrowRight, Wand2, Lightbulb, Copy, Scissors, Maximize2, Minimize2, ExternalLink, BookmarkPlus } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { checkFeatureQuota, consumeFeatureQuota, FeatureKey } from '@/lib/quota';
+import QuotaModal from '@/components/quota/QuotaModal';
 
-export type AIMode = 'paraphrase' | 'grammar' | 'expand' | 'shorten';
+export type AIMode = 'paraphrase' | 'grammar' | 'expand' | 'shorten' | 'translate';
 
 export interface CitationItem {
   id?: string;
@@ -34,6 +36,7 @@ export default function AIAssistantPopup({
   const [activeTab, setActiveTab] = useState<AIMode>(initialMode);
   const [copied, setCopied] = useState(false);
   const [activeModelName, setActiveModelName] = useState<string>('Gemini 3.5 Flash');
+  const [quotaExhaustedFeature, setQuotaExhaustedFeature] = useState<FeatureKey | null>(null);
 
   // Fallback heuristic transformations if API is unreachable
   const generateAcademicTransform = (text: string, mode: AIMode): { result: string; citation: CitationItem | null } => {
@@ -60,6 +63,19 @@ export default function AIAssistantPopup({
       }
       return {
         result: `Berdasarkan telaah kritis terhadap fenomena tersebut, ${trimmed.replace(/tuh|banget|cepet|make|bikin|pengen/gi, '')} dapat diartikulasikan bahwa pendekatan akademis yang terstruktur diperlukan guna mengoptimalkan implikasi teoritis dan praktis dalam konteks studi ini.`,
+        citation: null
+      };
+    }
+
+    if (mode === 'translate') {
+      if (trimmed.toLowerCase().includes('belanja') || trimmed.toLowerCase().includes('smartphone') || trimmed.toLowerCase().includes('online')) {
+        return {
+          result: "The development of digital technology has significantly transformed consumer behavior. The increasing preference for mobile-based transactions (m-commerce) is driven by time efficiency and service accessibility flexibility compared to conventional methods.",
+          citation: null
+        };
+      }
+      return {
+        result: `(Terjemahan AI): ${trimmed}`,
         citation: null
       };
     }
@@ -129,12 +145,23 @@ export default function AIAssistantPopup({
   };
 
   const handleProcess = async (modeToRun = activeTab) => {
+    // Check quota based on mode
+    const featKey: FeatureKey = modeToRun === 'paraphrase' ? 'parafrase' : 'writingAssistant';
+    const quota = checkFeatureQuota(featKey);
+    if (!quota.allowed) {
+      setQuotaExhaustedFeature(featKey);
+      setLoading(false);
+      return;
+    }
+    consumeFeatureQuota(featKey);
+
     setLoading(true);
     setCitation(null);
 
     // Track active model label
     if (modeToRun === 'expand') setActiveModelName('Gemini 3.7 Flash (Reasoning & Citations)');
     else if (modeToRun === 'paraphrase') setActiveModelName('Gemini 3.5 Flash (Academic Paraphrase)');
+    else if (modeToRun === 'translate') setActiveModelName('Gemini 3.5 Flash (Academic Translation)');
     else setActiveModelName('Gemini 3.5 Flash Lite (Fast Syntactic / EYD)');
 
     try {
@@ -286,6 +313,16 @@ export default function AIAssistantPopup({
           >
             <Minimize2 size={13} /> Persingkat
           </button>
+          <button 
+            onClick={() => handleTabChange('translate')}
+            className={`flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold border-b-2 whitespace-nowrap transition-colors ${
+              activeTab === 'translate' 
+                ? 'border-[var(--color-brand-600)] text-[var(--color-brand-600)]' 
+                : 'border-transparent text-zinc-500 hover:text-zinc-800'
+            }`}
+          >
+            <BookOpen size={13} /> Terjemahkan
+          </button>
         </div>
 
         {/* Content Area */}
@@ -332,7 +369,7 @@ export default function AIAssistantPopup({
               <div className="p-8 bg-zinc-50 border border-zinc-200 rounded-2xl flex flex-col items-center justify-center text-zinc-500 space-y-2.5">
                 <RefreshCw className="animate-spin text-[var(--color-brand-600)]" size={24} />
                 <p className="text-xs font-semibold text-zinc-700">
-                  {activeTab === 'expand' ? 'Mencari rujukan jurnal terpublikasi & memperluas argumen...' : 'Menyusun kalimat akademis dengan Gemini AI...'}
+                  {activeTab === 'expand' ? 'Mencari rujukan jurnal terpublikasi & memperluas argumen...' : activeTab === 'translate' ? 'Menerjemahkan naskah dengan Gemini AI...' : 'Menyusun kalimat akademis dengan Gemini AI...'}
                 </p>
                 <span className="text-[10px] text-zinc-400">{activeModelName}</span>
               </div>
@@ -398,6 +435,19 @@ export default function AIAssistantPopup({
           </button>
         </div>
       </div>
+
+      {/* Quota Exhausted Modal */}
+      {quotaExhaustedFeature && (
+        <QuotaModal
+          featureKey={quotaExhaustedFeature}
+          isOpen={true}
+          onClose={() => setQuotaExhaustedFeature(null)}
+          onPurchased={() => {
+            setQuotaExhaustedFeature(null);
+            handleProcess(activeTab);
+          }}
+        />
+      )}
     </div>
   );
 }

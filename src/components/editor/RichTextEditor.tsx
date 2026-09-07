@@ -472,6 +472,20 @@ export default function RichTextEditor({
             <span className="whitespace-nowrap">Persingkat</span>
           </button>
 
+          {/* 5. Terjemahkan Action */}
+          <button
+            type="button"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              if (floatingMenu.text) handleTriggerAI(floatingMenu.text, 'translate');
+            }}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl hover:bg-zinc-800 text-zinc-200 text-xs font-semibold transition-colors shrink-0 whitespace-nowrap"
+            title="Terjemahkan teks (Indo-Inggris / Inggris-Indo)"
+          >
+            <BookOpen size={13} className="text-pink-400 shrink-0" />
+            <span className="whitespace-nowrap">Terjemahkan</span>
+          </button>
+
           <div className="w-[1px] h-4 bg-zinc-700 my-auto mx-1 shrink-0" />
 
           {/* Formatting Controls in Bubble */}

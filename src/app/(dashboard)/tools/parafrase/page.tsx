@@ -8,6 +8,9 @@ import Link from "next/link";
 import { Type, Loader2, ArrowLeft, Copy, CheckCircle2, RefreshCw } from "lucide-react";
 import { useAIStream } from "@/hooks/useAIStream";
 import { useJenjang } from "@/hooks/useJenjang";
+import { checkFeatureQuota, consumeFeatureQuota } from "@/lib/quota";
+import QuotaBanner from "@/components/quota/QuotaBanner";
+import QuotaModal from "@/components/quota/QuotaModal";
 
 export default function ParafrasePage() {
   const { label, labelLower } = useJenjang();
@@ -17,6 +20,7 @@ export default function ParafrasePage() {
     target: "Kurangi Plagiasi (Turnitin)",
   });
   const [copied, setCopied] = useState<string | null>(null);
+  const [isQuotaModalOpen, setIsQuotaModalOpen] = useState(false);
 
   const { completion, complete, isLoading, error, reset } = useAIStream({
     api: "/api/ai/parafrase",
@@ -35,6 +39,14 @@ export default function ParafrasePage() {
       alert("Teks terlalu panjang. Maksimal 800 kata.");
       return;
     }
+
+    // Quota check & enforcement
+    const quotaCheck = checkFeatureQuota('parafrase');
+    if (!quotaCheck.allowed) {
+      setIsQuotaModalOpen(true);
+      return;
+    }
+    consumeFeatureQuota('parafrase');
 
     const generatedPrompt = `Tolong parafrase teks berikut ini. 
 
@@ -104,7 +116,8 @@ Format output persis seperti ini di awal respons:
       </Link>
       <div>
         <h1 className="font-display font-bold text-3xl text-[var(--color-text-primary)]">Parafrase Tool</h1>
-        <p className="text-[var(--color-text-secondary)] mt-2">Ubah struktur kalimat dan gaya bahasa untuk menghindari plagiasi dengan tetap menjaga makna asli.</p>
+        <p className="text-[var(--color-text-secondary)] mt-2 mb-4">Ubah struktur kalimat dan gaya bahasa untuk menghindari plagiasi dengan tetap menjaga makna asli.</p>
+        <QuotaBanner featureKey="parafrase" className="mb-4" />
       </div>
 
       <div className="bg-[var(--color-bg-surface)] border border-[var(--color-bg-muted)] p-6 rounded-2xl shadow-sm">
@@ -267,6 +280,13 @@ Format output persis seperti ini di awal respons:
           )}
         </div>
       )}
+
+      {/* Quota Exhausted Modal */}
+      <QuotaModal
+        featureKey="parafrase"
+        isOpen={isQuotaModalOpen}
+        onClose={() => setIsQuotaModalOpen(false)}
+      />
     </div>
   );
 }

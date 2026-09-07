@@ -3,17 +3,136 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { 
-  FileText, BookOpen, Clock, PanelLeft, PanelRight, Settings, X, Check, 
+  FileText, BookOpen, Clock, PanelRight, Settings, X, Check, 
   Upload, Download, FileCheck, File as FileIcon, Sparkles, LayoutGrid, Plus, 
-  ChevronRight, ArrowRight, ArrowLeft, LayoutDashboard, RefreshCw, Wand2, ShieldCheck, CheckCircle2,
-  Layers, SlidersHorizontal, Eye, HelpCircle, Edit3, Trash2, CheckSquare
+  ChevronRight, ChevronDown, ArrowRight, ArrowLeft, LayoutDashboard, RefreshCw, Wand2, ShieldCheck, CheckCircle2,
+  Layers, SlidersHorizontal, Eye, HelpCircle, Edit3, Trash2, CheckSquare, RotateCcw
 } from 'lucide-react';
 import RichTextEditor from '@/components/editor/RichTextEditor';
-import OutlineBuilder, { OutlineItem } from '@/components/workspace/OutlineBuilder';
 import CitationPanel from '@/components/workspace/CitationPanel';
-import ProgressTrackerSidebar from '@/components/workspace/ProgressTrackerSidebar';
 import AIAssistantPopup from '@/components/editor/AIAssistantPopup';
 import CommentThread from '@/components/editor/CommentThread';
+import { checkFeatureQuota, consumeFeatureQuota, FeatureKey } from '@/lib/quota';
+import QuotaModal from '@/components/quota/QuotaModal';
+
+export interface OutlineItem {
+  id: string;
+  title: string;
+  children?: OutlineItem[];
+  isOpen?: boolean;
+}
+
+const DEFAULT_OUTLINES: Record<string, OutlineItem[]> = {
+  S1: [
+    { id: '1', title: 'BAB I PENDAHULUAN', isOpen: true, children: [
+      { id: '1-1', title: '1.1 Latar Belakang Masalah' },
+      { id: '1-2', title: '1.2 Rumusan Masalah' },
+      { id: '1-3', title: '1.3 Tujuan Penelitian' },
+      { id: '1-4', title: '1.4 Manfaat Penelitian' },
+    ]},
+    { id: '2', title: 'BAB II TINJAUAN PUSTAKA', isOpen: false, children: [
+      { id: '2-1', title: '2.1 Landasan Teori' },
+      { id: '2-2', title: '2.2 Penelitian Terdahulu' },
+      { id: '2-3', title: '2.3 Kerangka Pemikiran' },
+      { id: '2-4', title: '2.4 Hipotesis Penelitian' },
+    ]},
+    { id: '3', title: 'BAB III METODE PENELITIAN', isOpen: false, children: [
+      { id: '3-1', title: '3.1 Jenis Penelitian' },
+      { id: '3-2', title: '3.2 Populasi dan Sampel' },
+      { id: '3-3', title: '3.3 Teknik Pengumpulan Data' },
+      { id: '3-4', title: '3.4 Teknik Analisis Data' },
+    ]},
+    { id: '4', title: 'BAB IV HASIL DAN PEMBAHASAN', isOpen: false, children: [
+      { id: '4-1', title: '4.1 Gambaran Umum Objek Penelitian' },
+      { id: '4-2', title: '4.2 Hasil Pengujian' },
+      { id: '4-3', title: '4.3 Pembahasan' },
+    ]},
+    { id: '5', title: 'BAB V PENUTUP', isOpen: false, children: [
+      { id: '5-1', title: '5.1 Kesimpulan' },
+      { id: '5-2', title: '5.2 Saran' },
+    ]},
+  ],
+  S2: [
+    { id: '1', title: 'BAB I PENDAHULUAN', isOpen: true, children: [
+      { id: '1-1', title: '1.1 Latar Belakang' },
+      { id: '1-2', title: '1.2 Identifikasi Masalah' },
+      { id: '1-3', title: '1.3 Rumusan Masalah' },
+      { id: '1-4', title: '1.4 Tujuan Penelitian' },
+      { id: '1-5', title: '1.5 Manfaat Penelitian' },
+      { id: '1-6', title: '1.6 Kebaruan Penelitian (Novelty)' },
+    ]},
+    { id: '2', title: 'BAB II KAJIAN PUSTAKA', isOpen: false, children: [
+      { id: '2-1', title: '2.1 Landasan Teoretis' },
+      { id: '2-2', title: '2.2 Kajian Empiris (Penelitian Terdahulu)' },
+      { id: '2-3', title: '2.3 Kerangka Konseptual' },
+      { id: '2-4', title: '2.4 Hipotesis' },
+    ]},
+    { id: '3', title: 'BAB III METODE PENELITIAN', isOpen: false, children: [
+      { id: '3-1', title: '3.1 Paradigma dan Pendekatan Penelitian' },
+      { id: '3-2', title: '3.2 Desain Penelitian' },
+      { id: '3-3', title: '3.3 Populasi, Sampel, dan Sampling' },
+      { id: '3-4', title: '3.4 Instrumen Penelitian' },
+      { id: '3-5', title: '3.5 Teknik Analisis Data' },
+    ]},
+    { id: '4', title: 'BAB IV HASIL PENELITIAN', isOpen: false, children: [
+      { id: '4-1', title: '4.1 Deskripsi Data' },
+      { id: '4-2', title: '4.2 Hasil Pengujian Hipotesis' },
+    ]},
+    { id: '5', title: 'BAB V PEMBAHASAN', isOpen: false, children: [
+      { id: '5-1', title: '5.1 Diskusi Hasil Temuan' },
+      { id: '5-2', title: '5.2 Implikasi Teoritis dan Praktis' },
+    ]},
+    { id: '6', title: 'BAB VI PENUTUP', isOpen: false, children: [
+      { id: '6-1', title: '6.1 Kesimpulan' },
+      { id: '6-2', title: '6.2 Keterbatasan dan Saran' },
+    ]},
+  ],
+  S3: [
+    { id: '1', title: 'BAB I PENDAHULUAN', isOpen: true, children: [
+      { id: '1-1', title: '1.1 Latar Belakang' },
+      { id: '1-2', title: '1.2 Rumusan Masalah' },
+      { id: '1-3', title: '1.3 Tujuan Penelitian' },
+      { id: '1-4', title: '1.4 Kontribusi Orisinal (Original Contribution)' },
+    ]},
+    { id: '2', title: 'BAB II TINJAUAN LITERATUR', isOpen: false, children: [
+      { id: '2-1', title: '2.1 Kerangka Teoretis' },
+      { id: '2-2', title: '2.2 State of the Art' },
+      { id: '2-3', title: '2.3 Research Gap dan Proposisi' },
+    ]},
+    { id: '3', title: 'BAB III KERANGKA KONSEPTUAL', isOpen: false, children: [
+      { id: '3-1', title: '3.1 Model Konseptual' },
+      { id: '3-2', title: '3.2 Proposisi Penelitian' },
+    ]},
+    { id: '4', title: 'BAB IV METODE PENELITIAN', isOpen: false, children: [
+      { id: '4-1', title: '4.1 Paradigma Penelitian' },
+      { id: '4-2', title: '4.2 Desain dan Prosedur' },
+      { id: '4-3', title: '4.3 Pengumpulan Data' },
+      { id: '4-4', title: '4.4 Strategi Analisis' },
+    ]},
+    { id: '5', title: 'BAB V HASIL PENELITIAN', isOpen: false, children: [
+      { id: '5-1', title: '5.1 Temuan Utama' },
+      { id: '5-2', title: '5.2 Pengujian Proposisi' },
+    ]},
+    { id: '6', title: 'BAB VI PEMBAHASAN', isOpen: false, children: [
+      { id: '6-1', title: '6.1 Interpretasi Temuan' },
+      { id: '6-2', title: '6.2 Kontribusi pada Ilmu Pengetahuan' },
+    ]},
+    { id: '7', title: 'BAB VII PENUTUP', isOpen: false, children: [
+      { id: '7-1', title: '7.1 Kesimpulan' },
+      { id: '7-2', title: '7.2 Keterbatasan' },
+      { id: '7-3', title: '7.3 Agenda Penelitian Lanjutan' },
+    ]},
+  ],
+};
+
+function numToRoman(num: number): string {
+  const roman = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
+  return roman[num - 1] || String(num);
+}
+
+function generateId() {
+  return `bab-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+}
 
 // --- Format Document Settings Interface ---
 interface DocFormat {
@@ -260,6 +379,7 @@ function CompilationModal({
   const totalBabs = outline.length;
 
   const handleStartCompile = () => {
+    consumeFeatureQuota('kompilasi');
     setCompiling(true);
     setTimeout(() => {
       setCompiling(false);
@@ -701,19 +821,38 @@ interface UploadedBab {
 }
 
 export default function WorkspaceClient() {
-  const [leftSidebarOpen, setLeftSidebarOpen] = useState(true);
   const [rightSidebarOpen, setRightSidebarOpen] = useState(true);
   const [activeRightPanel, setActiveRightPanel] = useState<'comments' | 'citations' | 'ai'>('citations');
   const [selectedText, setSelectedText] = useState<string | null>(null);
   const [isFormatModalOpen, setIsFormatModalOpen] = useState(false);
   const [isCompilationModalOpen, setIsCompilationModalOpen] = useState(false);
-  
-  // Left Sidebar Tab Switcher (Outline vs Progress)
-  const [sidebarTab, setSidebarTab] = useState<'outline' | 'progress'>('outline');
+  const [quotaExhaustedFeature, setQuotaExhaustedFeature] = useState<FeatureKey | null>(null);
 
+  const handleOpenCompilation = () => {
+    const check = checkFeatureQuota('kompilasi');
+    if (!check.allowed) {
+      setQuotaExhaustedFeature('kompilasi');
+      return;
+    }
+    setIsCompilationModalOpen(true);
+  };
+  
   // Chapter-based State
+  const [jenjang, setJenjang] = useState('S1');
   const [outline, setOutline] = useState<OutlineItem[]>([]);
   const [activeBabId, setActiveBabId] = useState<string | null>(null);
+
+  // Dropdown states
+  const [isProgressOpen, setIsProgressOpen] = useState(false);
+  const [isBabSelectorOpen, setIsBabSelectorOpen] = useState(false);
+  const progressDropdownRef = useRef<HTMLDivElement>(null);
+  const babSelectorRef = useRef<HTMLDivElement>(null);
+
+  // Inline editing states
+  const [editingBabId, setEditingBabId] = useState<string | null>(null);
+  const [editingBabDraft, setEditingBabDraft] = useState('');
+  const [editingSubBabId, setEditingSubBabId] = useState<string | null>(null);
+  const [editingSubBabDraft, setEditingSubBabDraft] = useState('');
   
   // Real chapter contents & uploads stored in localStorage
   const [contents, setContents] = useState<Record<string, string>>({});
@@ -727,9 +866,51 @@ export default function WorkspaceClient() {
   const [isDraggingFile, setIsDraggingFile] = useState(false);
   const [lastSavedTime, setLastSavedTime] = useState<string>('');
 
+  // Close dropdowns on outside click
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (progressDropdownRef.current && !progressDropdownRef.current.contains(event.target as Node)) {
+        setIsProgressOpen(false);
+      }
+      if (babSelectorRef.current && !babSelectorRef.current.contains(event.target as Node)) {
+        setIsBabSelectorOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   // Load state from localStorage on mount
   useEffect(() => {
     if (typeof window !== 'undefined') {
+      const ob = localStorage.getItem('bbr_onboarding');
+      let j = 'S1';
+      if (ob) {
+        try { j = JSON.parse(ob)?.jenjang || 'S1'; } catch {}
+      }
+      setJenjang(j);
+
+      const savedOutline = localStorage.getItem('bbr_outline');
+      if (savedOutline) {
+        try {
+          const parsed = JSON.parse(savedOutline);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setOutline(parsed);
+          } else {
+            const initial = DEFAULT_OUTLINES[j] || DEFAULT_OUTLINES['S1'];
+            setOutline(initial);
+            localStorage.setItem('bbr_outline', JSON.stringify(initial));
+          }
+        } catch {
+          const initial = DEFAULT_OUTLINES[j] || DEFAULT_OUTLINES['S1'];
+          setOutline(initial);
+        }
+      } else {
+        const initial = DEFAULT_OUTLINES[j] || DEFAULT_OUTLINES['S1'];
+        setOutline(initial);
+        localStorage.setItem('bbr_outline', JSON.stringify(initial));
+      }
+
       const savedContents = localStorage.getItem('bbr_bab_contents');
       if (savedContents) {
         try { setContents(JSON.parse(savedContents)); } catch {}
@@ -746,6 +927,127 @@ export default function WorkspaceClient() {
       }
     }
   }, []);
+
+  // Save outline helper
+  const saveOutline = (newOutline: OutlineItem[]) => {
+    setOutline(newOutline);
+    localStorage.setItem('bbr_outline', JSON.stringify(newOutline));
+  };
+
+  // Add Bab
+  const handleAddBab = () => {
+    const nextNum = outline.length + 1;
+    const newBab: OutlineItem = {
+      id: generateId(),
+      title: `BAB ${numToRoman(nextNum)} JUDUL BAB BARU`,
+      isOpen: true,
+      children: [
+        { id: generateId(), title: `${nextNum}.1 Sub-bab Awal` },
+      ],
+    };
+    const updated = [...outline, newBab];
+    saveOutline(updated);
+    setActiveBabId(newBab.id);
+  };
+
+  // Delete Bab
+  const handleDeleteBab = (babId: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (outline.length <= 1) {
+      alert('Minimal harus ada 1 bab di dalam naskah tugas akhir.');
+      return;
+    }
+    const targetBab = outline.find(b => b.id === babId);
+    if (window.confirm(`Hapus "${targetBab?.title || 'Bab ini'}" beserta draf isinya dari naskah?`)) {
+      const updated = outline.filter(b => b.id !== babId);
+      saveOutline(updated);
+
+      const newContents = { ...contents };
+      delete newContents[babId];
+      setContents(newContents);
+      localStorage.setItem('bbr_bab_contents', JSON.stringify(newContents));
+
+      const newUploads = { ...uploads };
+      delete newUploads[babId];
+      saveUploads(newUploads);
+
+      if (activeBabId === babId) {
+        setActiveBabId(null);
+      }
+    }
+  };
+
+  // Rename Bab
+  const handleSaveRenameBab = (babId: string) => {
+    if (!editingBabDraft.trim()) {
+      setEditingBabId(null);
+      return;
+    }
+    const updated = outline.map(b => b.id === babId ? { ...b, title: editingBabDraft.trim() } : b);
+    saveOutline(updated);
+    setEditingBabId(null);
+  };
+
+  // Add Sub-bab
+  const handleAddSubBab = (babId: string, customTitle?: string) => {
+    const bab = outline.find(b => b.id === babId);
+    if (!bab) return;
+    const babIdx = outline.findIndex(b => b.id === babId) + 1;
+    const childCount = (bab.children?.length || 0) + 1;
+    const title = customTitle?.trim() || `${babIdx}.${childCount} Sub-bab Baru`;
+    const newChild: OutlineItem = {
+      id: generateId(),
+      title,
+    };
+    const updated = outline.map(b => 
+      b.id === babId 
+        ? { ...b, children: [...(b.children || []), newChild], isOpen: true } 
+        : b
+    );
+    saveOutline(updated);
+  };
+
+  // Delete Sub-bab
+  const handleDeleteSubBab = (babId: string, childId: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    const bab = outline.find(b => b.id === babId);
+    const subBab = bab?.children?.find(c => c.id === childId);
+    if (window.confirm(`Hapus sub-bab "${subBab?.title || 'ini'}"?`)) {
+      const updated = outline.map(b => 
+        b.id === babId 
+          ? { ...b, children: b.children?.filter(c => c.id !== childId) } 
+          : b
+      );
+      saveOutline(updated);
+    }
+  };
+
+  // Rename Sub-bab
+  const handleSaveRenameSubBab = (babId: string, childId: string) => {
+    if (!editingSubBabDraft.trim()) {
+      setEditingSubBabId(null);
+      return;
+    }
+    const updated = outline.map(b => 
+      b.id === babId 
+        ? {
+            ...b,
+            children: b.children?.map(c => c.id === childId ? { ...c, title: editingSubBabDraft.trim() } : c),
+          }
+        : b
+    );
+    saveOutline(updated);
+    setEditingSubBabId(null);
+  };
+
+  // Reset Outline
+  const handleResetOutline = () => {
+    if (window.confirm('Kembalikan struktur bab ke template standar kampus Anda?')) {
+      const defaults = DEFAULT_OUTLINES[jenjang] || DEFAULT_OUTLINES['S1'];
+      saveOutline(defaults);
+      setActiveBabId(null);
+    }
+  };
 
   // Save content handler
   const handleSaveContent = (babId: string, newHtml: string) => {
@@ -908,6 +1210,8 @@ export default function WorkspaceClient() {
 
   const totalBabs = outline.length;
   const filledCount = filledBabIds.length;
+  const progressPct = totalBabs > 0 ? Math.round((filledCount / totalBabs) * 100) : 0;
+  const totalWords = Object.values(contents).reduce((acc, html) => acc + getWordCount(html), 0);
 
   return (
     <div className="flex flex-1 w-full h-full overflow-hidden bg-zinc-100 text-zinc-900 select-none">
@@ -933,125 +1237,203 @@ export default function WorkspaceClient() {
       )}
 
       {/* ========================================================================= */}
-      {/* LEFT SIDEBAR: Struktur Bab & Target Progress */}
-      {/* ========================================================================= */}
-      {leftSidebarOpen && (
-        <aside className="w-80 md:w-88 border-r border-zinc-200/90 bg-white flex flex-col transition-all duration-300 shrink-0 shadow-sm z-30">
-          {/* Header Panel */}
-          <div className="p-3.5 px-4 border-b border-zinc-200 flex justify-between items-center bg-zinc-50/50">
-            <div className="flex items-center gap-1.5">
-              <button
-                onClick={() => setSidebarTab('outline')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
-                  sidebarTab === 'outline'
-                    ? 'bg-[var(--color-brand-600)] text-white shadow-xs'
-                    : 'text-zinc-500 hover:text-zinc-800 hover:bg-zinc-200/60'
-                }`}
-              >
-                Struktur Bab
-              </button>
-              <button
-                onClick={() => setSidebarTab('progress')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
-                  sidebarTab === 'progress'
-                    ? 'bg-[var(--color-brand-600)] text-white shadow-xs'
-                    : 'text-zinc-500 hover:text-zinc-800 hover:bg-zinc-200/60'
-                }`}
-              >
-                Target Progress
-              </button>
-            </div>
-            <button
-              onClick={() => setLeftSidebarOpen(false)}
-              className="p-1.5 text-zinc-400 hover:text-zinc-600 hover:bg-zinc-200/60 rounded-lg transition-colors"
-              title="Sembunyikan Panel"
-            >
-              <PanelLeft size={16} />
-            </button>
-          </div>
-
-          {/* Tab Content */}
-          <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
-            {sidebarTab === 'outline' ? (
-              <OutlineBuilder 
-                activeBabId={activeBabId} 
-                onSelectBab={setActiveBabId} 
-                uploadedBabIds={filledBabIds} 
-                outline={outline}
-                setOutline={setOutline}
-              />
-            ) : (
-              <div className="space-y-4">
-                <ProgressTrackerSidebar />
-              </div>
-            )}
-          </div>
-
-          {/* Sidebar Footer: Kembali ke Dashboard */}
-          <div className="p-3 px-4 border-t border-zinc-200 bg-zinc-50/90 mt-auto shrink-0">
-            <Link
-              href="/dashboard"
-              className="flex items-center gap-2.5 w-full px-3.5 py-2.5 rounded-xl bg-white hover:bg-[var(--color-brand-50)] text-zinc-700 hover:text-[var(--color-brand-600)] border border-zinc-200 hover:border-[var(--color-brand-300)] font-bold text-xs transition-all shadow-xs group"
-            >
-              <div className="w-7 h-7 rounded-lg bg-zinc-100 group-hover:bg-[var(--color-brand-100)] text-zinc-500 group-hover:text-[var(--color-brand-600)] flex items-center justify-center transition-colors shrink-0">
-                <ArrowLeft size={15} className="group-hover:-translate-x-0.5 transition-transform" />
-              </div>
-              <div className="flex flex-col text-left">
-                <span className="leading-tight text-xs font-bold text-zinc-800 group-hover:text-[var(--color-brand-600)]">Kembali ke Dashboard</span>
-                <span className="text-[10px] text-zinc-400 font-normal">Halaman Utama Platform</span>
-              </div>
-            </Link>
-          </div>
-        </aside>
-      )}
-
-      {/* ========================================================================= */}
-      {/* MAIN WORKSPACE CANVAS AREA */}
+      {/* MAIN WORKSPACE CANVAS AREA (FULL WIDTH) */}
       {/* ========================================================================= */}
       <main className="flex-1 flex flex-col h-full bg-zinc-100 relative transition-all duration-300 min-w-0 overflow-hidden">
         {/* Top Control Header Toolbar */}
         <header className="h-14 border-b border-zinc-200/90 bg-white flex items-center justify-between px-4 sticky top-0 z-20 shrink-0 shadow-xs">
-          {/* Left Controls */}
-          <div className="flex items-center gap-3 min-w-0">
-            {!leftSidebarOpen && (
-              <button
-                onClick={() => setLeftSidebarOpen(true)}
-                className="p-2 hover:bg-zinc-100 rounded-xl text-zinc-600 border border-zinc-200 shrink-0 transition-colors"
-                title="Buka Struktur Bab"
-              >
-                <PanelLeft size={17} />
-              </button>
+          {/* Left Controls & Breadcrumbs */}
+          <div className="flex items-center gap-2.5 min-w-0">
+            <Link
+              href="/dashboard"
+              className="font-bold text-xs md:text-sm text-zinc-600 hover:text-[var(--color-brand-600)] transition-colors flex items-center gap-1.5 shrink-0 px-2 py-1 rounded-lg hover:bg-zinc-100"
+            >
+              <LayoutDashboard size={14} className="text-zinc-500" />
+              <span>Dashboard</span>
+            </Link>
+            <ChevronRight size={14} className="text-zinc-300 shrink-0" />
+            <button
+              onClick={() => setActiveBabId(null)}
+              className={`font-bold text-xs md:text-sm transition-colors flex items-center gap-1.5 shrink-0 px-2.5 py-1 rounded-lg ${
+                activeBabId === null 
+                  ? 'text-[var(--color-brand-700)] bg-[var(--color-brand-50)] border border-[var(--color-brand-200)]' 
+                  : 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100'
+              }`}
+              title="Lihat semua struktur bab tugas akhir"
+            >
+              <LayoutGrid size={14} />
+              <span>Ringkasan Bab</span>
+            </button>
+
+            {/* Chapter Selector Dropdown */}
+            {activeBab && (
+              <>
+                <ChevronRight size={14} className="text-zinc-300 shrink-0" />
+                <div className="relative" ref={babSelectorRef}>
+                  <button
+                    onClick={() => setIsBabSelectorOpen(!isBabSelectorOpen)}
+                    className="flex items-center gap-1.5 px-2.5 py-1 bg-zinc-50 hover:bg-zinc-100 border border-zinc-200 rounded-lg text-xs font-bold text-zinc-900 transition-colors truncate max-w-[200px] sm:max-w-[300px]"
+                    title="Ganti Bab Lain"
+                  >
+                    <span className="truncate">{activeBab.title}</span>
+                    <ChevronDown size={13} className={`text-zinc-400 shrink-0 transition-transform duration-200 ${isBabSelectorOpen ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {isBabSelectorOpen && (
+                    <div className="absolute left-0 mt-1.5 w-72 bg-white rounded-2xl border border-zinc-200 shadow-xl z-50 p-2 space-y-1 animate-in fade-in zoom-in-95 duration-150">
+                      <div className="px-2 py-1 text-[10px] font-bold uppercase text-zinc-400">Pindah ke Bab:</div>
+                      {outline.map((b) => {
+                        const isFilled = filledBabIds.includes(b.id);
+                        return (
+                          <button
+                            key={b.id}
+                            onClick={() => { setActiveBabId(b.id); setIsBabSelectorOpen(false); }}
+                            className={`w-full text-left px-2.5 py-2 rounded-xl text-xs font-semibold flex items-center justify-between transition-colors ${
+                              activeBabId === b.id 
+                                ? 'bg-[var(--color-brand-50)] text-[var(--color-brand-700)] font-bold' 
+                                : 'text-zinc-700 hover:bg-zinc-100'
+                            }`}
+                          >
+                            <span className="truncate pr-2">{b.title}</span>
+                            {isFilled ? (
+                              <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full shrink-0">✓ Terisi</span>
+                            ) : (
+                              <span className="text-[10px] text-zinc-400 shrink-0">Kosong</span>
+                            )}
+                          </button>
+                        );
+                      })}
+                      <div className="pt-1.5 mt-1 border-t border-zinc-100">
+                        <button
+                          onClick={() => { handleAddBab(); setIsBabSelectorOpen(false); }}
+                          className="w-full text-center py-1.5 rounded-xl bg-[var(--color-brand-50)] text-[var(--color-brand-700)] hover:bg-[var(--color-brand-100)] text-xs font-bold transition-colors flex items-center justify-center gap-1"
+                        >
+                          <Plus size={13} /> Tambah Bab Baru
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </>
             )}
-            <div className="flex items-center gap-2 truncate">
-              <Link
-                href="/dashboard"
-                className="font-bold text-xs md:text-sm text-zinc-600 hover:text-[var(--color-brand-600)] transition-colors flex items-center gap-1.5 shrink-0 px-2 py-1 rounded-lg hover:bg-zinc-100"
-              >
-                <LayoutDashboard size={14} className="text-zinc-500" />
-                <span>Dashboard</span>
-              </Link>
-              <ChevronRight size={14} className="text-zinc-400 shrink-0" />
-              <button
-                onClick={() => setActiveBabId(null)}
-                className={`font-bold text-xs md:text-sm transition-colors flex items-center gap-1 shrink-0 ${
-                  activeBabId === null ? 'text-[var(--color-brand-600)]' : 'text-zinc-600 hover:text-zinc-900'
-                }`}
-              >
-                Workspace
-              </button>
-              {activeBab && (
-                <>
-                  <ChevronRight size={14} className="text-zinc-400 shrink-0" />
-                  <span className="font-semibold text-xs md:text-sm text-zinc-900 truncate">
-                    {activeBab.title}
-                  </span>
-                </>
-              )}
-            </div>
           </div>
 
           {/* Right Action Tools */}
           <div className="flex items-center gap-2 shrink-0">
+            {/* PROGRESS DROPDOWN BUTTON */}
+            <div className="relative" ref={progressDropdownRef}>
+              <button
+                onClick={() => setIsProgressOpen(!isProgressOpen)}
+                className={`px-3 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-2 transition-all shadow-xs ${
+                  isProgressOpen 
+                    ? 'bg-[var(--color-brand-50)] border-[var(--color-brand-300)] text-[var(--color-brand-700)] ring-2 ring-[var(--color-brand-200)]' 
+                    : 'bg-white border-zinc-200 hover:bg-zinc-50 text-zinc-700'
+                }`}
+                title="Lihat Target Progress Naskah"
+              >
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                  <span className="hidden sm:inline">Progress:</span>
+                  <span className="font-bold text-[var(--color-brand-600)]">{progressPct}%</span>
+                  <span className="text-[10px] text-zinc-400 font-normal">({filledCount}/{totalBabs})</span>
+                </div>
+                <ChevronDown size={14} className={`transition-transform text-zinc-400 duration-200 ${isProgressOpen ? 'rotate-180 text-[var(--color-brand-600)]' : ''}`} />
+              </button>
+
+              {/* Progress Dropdown Menu */}
+              {isProgressOpen && (
+                <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-2xl border border-zinc-200 shadow-2xl z-50 p-5 space-y-4 animate-in fade-in zoom-in-95 duration-150">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-bold text-sm text-zinc-900">Target Progress Naskah</h4>
+                      <p className="text-[11px] text-zinc-500">Kelengkapan penulisan per bab tugas akhir</p>
+                    </div>
+                    <span className="px-2.5 py-1 rounded-full text-xs font-black bg-[var(--color-brand-100)] text-[var(--color-brand-700)]">
+                      {progressPct}% Selesai
+                    </span>
+                  </div>
+
+                  {/* Visual Bar */}
+                  <div className="space-y-1.5">
+                    <div className="w-full bg-zinc-100 h-2.5 rounded-full overflow-hidden border border-zinc-200/60">
+                      <div 
+                        className="bg-gradient-to-r from-[var(--color-brand-600)] to-[var(--color-brand-400)] h-full rounded-full transition-all duration-500"
+                        style={{ width: `${progressPct}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Summary Metric Counters */}
+                  <div className="grid grid-cols-3 gap-2 bg-zinc-50 p-3 rounded-xl border border-zinc-200/60 text-center">
+                    <div>
+                      <div className="text-[10px] uppercase font-bold text-zinc-400">Total Bab</div>
+                      <div className="text-base font-extrabold text-zinc-800">{totalBabs}</div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] uppercase font-bold text-zinc-400">Terisi</div>
+                      <div className="text-base font-extrabold text-emerald-600">{filledCount}</div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] uppercase font-bold text-zinc-400">Total Kata</div>
+                      <div className="text-base font-extrabold text-[var(--color-brand-600)]">{totalWords}</div>
+                    </div>
+                  </div>
+
+                  {/* Chapter Status List */}
+                  <div className="space-y-1.5 max-h-56 overflow-y-auto custom-scrollbar pr-1">
+                    <div className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider mb-1">Status Tiap Bab:</div>
+                    {outline.map((b) => {
+                      const up = uploads[b.id];
+                      const text = contents[b.id] || '';
+                      const words = getWordCount(text);
+                      const isFilled = !!up || words > 0;
+
+                      return (
+                        <div
+                          key={b.id}
+                          onClick={() => { setActiveBabId(b.id); setIsProgressOpen(false); }}
+                          className={`flex items-center justify-between p-2 rounded-xl text-xs cursor-pointer transition-colors border ${
+                            activeBabId === b.id 
+                              ? 'bg-[var(--color-brand-50)]/70 border-[var(--color-brand-200)]' 
+                              : 'bg-white hover:bg-zinc-50 border-zinc-200/60'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 min-w-0 pr-2">
+                            {isFilled ? (
+                              <CheckCircle2 size={14} className="text-emerald-600 shrink-0" />
+                            ) : (
+                              <Clock size={14} className="text-zinc-300 shrink-0" />
+                            )}
+                            <span className="font-semibold text-zinc-800 truncate">{b.title}</span>
+                          </div>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${
+                            isFilled ? 'bg-emerald-50 text-emerald-700' : 'bg-zinc-100 text-zinc-500'
+                          }`}>
+                            {up ? 'Berkas' : words > 0 ? `${words} kata` : 'Belum'}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="pt-2 border-t border-zinc-100 flex items-center justify-between">
+                    <button
+                      onClick={() => { setActiveBabId(null); setIsProgressOpen(false); }}
+                      className="text-xs font-bold text-[var(--color-brand-600)] hover:underline flex items-center gap-1"
+                    >
+                      Buka Ringkasan Seluruh Bab &rarr;
+                    </button>
+                    <button
+                      onClick={() => { handleAddBab(); setIsProgressOpen(false); }}
+                      className="text-xs font-semibold text-zinc-600 hover:text-zinc-900 flex items-center gap-1"
+                    >
+                      <Plus size={13} /> Tambah Bab
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* Format Settings Button */}
             <button
               onClick={() => setIsFormatModalOpen(true)}
@@ -1059,7 +1441,7 @@ export default function WorkspaceClient() {
               title="Pengaturan Margin, Font & Spasi Dokumen"
             >
               <Settings size={14} className="text-zinc-500" />
-              <span className="hidden sm:inline">Format Template</span>
+              <span className="hidden md:inline">Format Template</span>
             </button>
 
             {/* Citations Panel Button */}
@@ -1072,7 +1454,7 @@ export default function WorkspaceClient() {
               }`}
             >
               <BookOpen size={14} className={rightSidebarOpen && activeRightPanel === 'citations' ? 'text-[var(--color-brand-600)]' : 'text-zinc-500'} />
-              <span className="hidden md:inline">Sitasi</span>
+              <span className="hidden lg:inline">Sitasi</span>
             </button>
 
             {/* Annotations Panel Button */}
@@ -1085,17 +1467,17 @@ export default function WorkspaceClient() {
               }`}
             >
               <Clock size={14} className="text-amber-600" />
-              <span className="hidden md:inline">Anotasi</span>
+              <span className="hidden lg:inline">Anotasi</span>
             </button>
 
             {/* Primary Compile Action Button */}
             <button
-              onClick={() => setIsCompilationModalOpen(true)}
+              onClick={handleOpenCompilation}
               className="px-4 py-1.5 rounded-xl bg-[var(--color-brand-600)] hover:bg-[var(--color-brand-500)] text-white text-xs font-bold transition-all flex items-center gap-2 shadow-sm hover:shadow active:scale-98"
               title="Kompilasi semua bab menjadi dokumen Word utuh"
             >
               <Download size={15} />
-              <span>Kompilasi</span>
+              <span className="hidden sm:inline">Kompilasi Word</span>
               <span className="bg-white/20 text-white text-[10px] px-1.5 py-0.2 rounded-full font-extrabold">
                 {filledCount}/{totalBabs}
               </span>
@@ -1114,7 +1496,7 @@ export default function WorkspaceClient() {
         </header>
 
         {/* ========================================================================= */}
-        {/* Dynamic Center Canvas View */}
+        {/* Dynamic Center Canvas View (Clean & Wide) */}
         {/* ========================================================================= */}
         <div className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar flex justify-center">
           <div className="w-full max-w-5xl">
@@ -1122,7 +1504,7 @@ export default function WorkspaceClient() {
             {activeBabId === null ? (
               <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
                 {/* Header Welcome Card */}
-                <div className="bg-gradient-to-r from-[#7B2020] via-[#651818] to-[#450F0F] text-white p-6 md:p-8 rounded-3xl shadow-md border border-[#9B3535]/30 relative overflow-hidden">
+                <div className="bg-gradient-to-r from-[var(--color-brand-900)] via-[var(--color-brand-800)] to-[var(--color-brand-700)] text-white p-6 md:p-8 rounded-3xl shadow-md border border-[var(--color-brand-600)]/30 relative overflow-hidden">
                   <div className="relative z-10 max-w-2xl">
                     <span className="text-[11px] font-bold uppercase tracking-wider px-3 py-1 rounded-full bg-white/20 text-white backdrop-blur-md mb-3 inline-block border border-white/10 shadow-xs">
                       Workspace Penulisan Tugas Akhir
@@ -1131,7 +1513,7 @@ export default function WorkspaceClient() {
                       Kelola Naskah per Bab & Kompilasi
                     </h2>
                     <p className="text-sm text-white/95 leading-relaxed font-normal">
-                      Tulis langsung di editor atau unggah berkas Word (.docx). Sistem akan mengotomasi margin standar, memanajemen sitasi, dan menggabungkan draf akhir menjadi satu dokumen siap sidang.
+                      Tulis langsung di editor atau unggah berkas Word (.docx). Sistem akan mengotomasi margin standar kampus, memanajemen sitasi, dan menggabungkan draf akhir menjadi satu dokumen siap sidang.
                     </p>
                   </div>
                   <div className="absolute right-6 bottom-4 opacity-15 text-white pointer-events-none hidden md:block">
@@ -1156,19 +1538,48 @@ export default function WorkspaceClient() {
                   <div className="bg-white border border-zinc-200 p-4 rounded-2xl shadow-xs">
                     <div className="text-xs text-zinc-500 font-medium mb-1">Kesiapan Kompilasi</div>
                     <div className="text-2xl font-bold text-[var(--color-brand-600)]">
-                      {totalBabs > 0 ? Math.round((filledCount / totalBabs) * 100) : 0}%
+                      {progressPct}%
                     </div>
                   </div>
                 </div>
 
-                {/* Chapter Cards Grid */}
+                {/* Chapter Management Section */}
                 <div>
-                  <div className="flex items-center justify-between mb-3 px-1">
-                    <h3 className="font-bold text-sm text-zinc-800">Daftar Bab Tugas Akhir</h3>
-                    <span className="text-xs text-zinc-500">Pilih bab untuk mulai menulis atau mengunggah berkas</span>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 px-1">
+                    <div>
+                      <h3 className="font-display font-bold text-xl text-zinc-900 flex items-center gap-2">
+                        <span>Struktur & Daftar Bab Tugas Akhir</span>
+                        <span className="text-xs font-semibold text-zinc-500 bg-zinc-100 border border-zinc-200 px-2.5 py-0.5 rounded-full">
+                          {outline.length} Bab
+                        </span>
+                      </h3>
+                      <p className="text-xs text-zinc-500 mt-0.5">
+                        Kelola struktur naskah, tambah/hapus bab dan sub-bab, serta pantau kelengkapan draf.
+                      </p>
+                    </div>
+
+                    {/* ALWAYS VISIBLE ACTION BUTTONS! */}
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        onClick={handleResetOutline}
+                        title="Kembalikan ke template default kampus"
+                        className="px-3 py-2 bg-white hover:bg-zinc-100 text-zinc-600 text-xs font-semibold rounded-xl border border-zinc-200 shadow-xs flex items-center gap-1.5 transition-colors"
+                      >
+                        <RotateCcw size={13} />
+                        <span>Reset Template</span>
+                      </button>
+                      <button
+                        onClick={handleAddBab}
+                        title="Tambah Bab Baru ke Naskah"
+                        className="px-4 py-2 bg-[var(--color-brand-600)] hover:bg-[var(--color-brand-500)] text-white text-xs font-bold rounded-xl shadow-sm flex items-center gap-1.5 transition-all hover:scale-105 active:scale-95"
+                      >
+                        <Plus size={15} />
+                        <span>Tambah Bab Baru</span>
+                      </button>
+                    </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                     {outline.map((bab, idx) => {
                       const up = uploads[bab.id];
                       const text = contents[bab.id] || '';
@@ -1178,49 +1589,193 @@ export default function WorkspaceClient() {
                       return (
                         <div
                           key={bab.id}
-                          onClick={() => setActiveBabId(bab.id)}
-                          className={`p-5 rounded-2xl border-2 transition-all cursor-pointer bg-white group flex flex-col justify-between ${
+                          className={`p-5 rounded-2xl border-2 transition-all bg-white flex flex-col justify-between shadow-xs hover:shadow-md ${
                             isFilled
-                              ? 'border-zinc-200 hover:border-emerald-500 hover:shadow-md'
-                              : 'border-zinc-200 hover:border-[var(--color-brand-400)] hover:shadow-md'
+                              ? 'border-zinc-200 hover:border-emerald-500/60'
+                              : 'border-zinc-200 hover:border-[var(--color-brand-400)]'
                           }`}
                         >
                           <div>
-                            <div className="flex items-center justify-between mb-2">
-                              <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
-                                Bab {idx + 1}
-                              </span>
-                              {up ? (
-                                <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full flex items-center gap-1">
-                                  <FileCheck size={12} /> Berkas Terunggah
+                            {/* Card Header: Bab badge, status pill, and ALWAYS VISIBLE ACTION BUTTONS */}
+                            <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-zinc-100">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-bold uppercase tracking-wider text-[var(--color-brand-800)] bg-[var(--color-brand-50)] border border-[var(--color-brand-200)] px-2.5 py-0.5 rounded-md">
+                                  Bab {idx + 1}
                                 </span>
-                              ) : words > 0 ? (
-                                <span className="text-[11px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2.5 py-0.5 rounded-full flex items-center gap-1">
-                                  <Edit3 size={12} /> Draf ({words} kata)
-                                </span>
+                                {up ? (
+                                  <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                                    <FileCheck size={12} /> Berkas Terunggah
+                                  </span>
+                                ) : words > 0 ? (
+                                  <span className="text-[11px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                                    <Edit3 size={12} /> Draf ({words} kata)
+                                  </span>
+                                ) : (
+                                  <span className="text-[11px] font-medium text-zinc-400 bg-zinc-100 border border-zinc-200 px-2.5 py-0.5 rounded-full">
+                                    Belum Diisi
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* ALWAYS VISIBLE CHAPTER ACTION BUTTONS (NO HOVER NEEDED!) */}
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                <button
+                                  onClick={() => { setEditingBabId(bab.id); setEditingBabDraft(bab.title); }}
+                                  title="Ubah Nama Bab"
+                                  className="px-2 py-1 bg-zinc-50 hover:bg-zinc-100 border border-zinc-200 text-zinc-600 hover:text-zinc-900 rounded-lg text-xs font-medium flex items-center gap-1 transition-colors"
+                                >
+                                  <Edit3 size={12} />
+                                  <span className="hidden sm:inline">Ubah</span>
+                                </button>
+                                <button
+                                  onClick={(e) => handleDeleteBab(bab.id, e)}
+                                  title="Hapus Bab Ini"
+                                  className="px-2 py-1 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors"
+                                >
+                                  <Trash2 size={12} />
+                                  <span className="hidden sm:inline">Hapus</span>
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Chapter Title / Inline Editor */}
+                            <div className="mt-3">
+                              {editingBabId === bab.id ? (
+                                <div className="flex items-center gap-2">
+                                  <input
+                                    type="text"
+                                    value={editingBabDraft}
+                                    onChange={(e) => setEditingBabDraft(e.target.value)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') handleSaveRenameBab(bab.id);
+                                      if (e.key === 'Escape') setEditingBabId(null);
+                                    }}
+                                    autoFocus
+                                    className="flex-1 text-sm font-bold px-3 py-1.5 border-2 border-[var(--color-brand-600)] rounded-xl outline-none bg-white text-zinc-900 shadow-inner"
+                                  />
+                                  <button
+                                    onClick={() => handleSaveRenameBab(bab.id)}
+                                    className="p-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold"
+                                    title="Simpan Judul"
+                                  >
+                                    <Check size={14} />
+                                  </button>
+                                  <button
+                                    onClick={() => setEditingBabId(null)}
+                                    className="p-2 bg-zinc-200 hover:bg-zinc-300 text-zinc-700 rounded-xl text-xs"
+                                    title="Batal"
+                                  >
+                                    <X size={14} />
+                                  </button>
+                                </div>
                               ) : (
-                                <span className="text-[11px] font-medium text-zinc-500 bg-zinc-100 border border-zinc-200 px-2.5 py-0.5 rounded-full">
-                                  Belum Diisi
-                                </span>
+                                <h4
+                                  onClick={() => setActiveBabId(bab.id)}
+                                  className="font-bold text-base text-zinc-900 hover:text-[var(--color-brand-600)] transition-colors cursor-pointer"
+                                  title="Klik untuk membuka editor bab"
+                                >
+                                  {bab.title}
+                                </h4>
                               )}
                             </div>
-                            <h4 className="font-bold text-sm text-zinc-900 group-hover:text-[var(--color-brand-600)] transition-colors mb-1">
-                              {bab.title}
-                            </h4>
-                            <p className="text-xs text-zinc-400">
-                              {bab.children && bab.children.length > 0 
-                                ? `Template Outline: ${bab.children.length} Sub-bab` 
-                                : 'Tanpa sub-bab default'}
-                            </p>
+
+                            {/* SUB-BAB MANAGEMENT DIRECTLY IN CARD (ALWAYS VISIBLE!) */}
+                            <div className="mt-3 bg-zinc-50/80 border border-zinc-200/80 rounded-xl p-3 space-y-2">
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs font-bold text-zinc-600 flex items-center gap-1.5">
+                                  <Layers size={13} className="text-[var(--color-brand-600)]" />
+                                  Sub-bab ({bab.children?.length || 0}):
+                                </span>
+                                <button
+                                  onClick={() => handleAddSubBab(bab.id)}
+                                  title="Tambah sub-bab baru ke bab ini"
+                                  className="px-2.5 py-1 bg-white hover:bg-[var(--color-brand-50)] text-[var(--color-brand-700)] hover:text-[var(--color-brand-800)] border border-[var(--color-brand-200)] rounded-lg text-xs font-bold flex items-center gap-1 shadow-2xs transition-all hover:scale-102"
+                                >
+                                  <Plus size={12} />
+                                  <span>Tambah Sub-bab</span>
+                                </button>
+                              </div>
+
+                              {/* Sub-bab list */}
+                              {bab.children && bab.children.length > 0 ? (
+                                <div className="space-y-1.5 max-h-48 overflow-y-auto custom-scrollbar pr-0.5">
+                                  {bab.children.map((child) => (
+                                    <div
+                                      key={child.id}
+                                      className="flex items-center justify-between py-1.5 px-2.5 bg-white border border-zinc-200/70 rounded-lg text-xs text-zinc-700"
+                                    >
+                                      {editingSubBabId === child.id ? (
+                                        <div className="flex items-center gap-1.5 flex-1 min-w-0 mr-2">
+                                          <input
+                                            type="text"
+                                            value={editingSubBabDraft}
+                                            onChange={(e) => setEditingSubBabDraft(e.target.value)}
+                                            onKeyDown={(e) => {
+                                              if (e.key === 'Enter') handleSaveRenameSubBab(bab.id, child.id);
+                                              if (e.key === 'Escape') setEditingSubBabId(null);
+                                            }}
+                                            autoFocus
+                                            className="flex-1 text-xs font-semibold px-2 py-1 border border-[var(--color-brand-600)] rounded-md outline-none bg-white text-zinc-900"
+                                          />
+                                          <button
+                                            onClick={() => handleSaveRenameSubBab(bab.id, child.id)}
+                                            className="p-1 text-emerald-600 hover:bg-emerald-50 rounded"
+                                          >
+                                            <Check size={13} />
+                                          </button>
+                                          <button
+                                            onClick={() => setEditingSubBabId(null)}
+                                            className="p-1 text-zinc-400 hover:bg-zinc-100 rounded"
+                                          >
+                                            <X size={13} />
+                                          </button>
+                                        </div>
+                                      ) : (
+                                        <span className="truncate flex-1 min-w-0 font-medium text-zinc-800">
+                                          {child.title}
+                                        </span>
+                                      )}
+
+                                      {/* ALWAYS VISIBLE ACTION BUTTONS ON EACH SUB-BAB! */}
+                                      <div className="flex items-center gap-1 shrink-0 ml-2">
+                                        <button
+                                          onClick={() => { setEditingSubBabId(child.id); setEditingSubBabDraft(child.title); }}
+                                          title="Ubah nama sub-bab"
+                                          className="p-1 text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 rounded transition-colors"
+                                        >
+                                          <Edit3 size={12} />
+                                        </button>
+                                        <button
+                                          onClick={(e) => handleDeleteSubBab(bab.id, child.id, e)}
+                                          title="Hapus sub-bab ini"
+                                          className="p-1 text-zinc-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors"
+                                        >
+                                          <Trash2 size={12} />
+                                        </button>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <p className="text-xs text-zinc-400 italic py-1">
+                                  Belum ada sub-bab di bab ini. Klik tombol "Tambah Sub-bab" di atas.
+                                </p>
+                              )}
+                            </div>
                           </div>
 
+                          {/* Card Footer */}
                           <div className="mt-4 pt-3 border-t border-zinc-100 flex items-center justify-between text-xs">
                             <span className="text-zinc-500 truncate max-w-[200px]">
                               {up ? up.fileName : words > 0 ? `${words} kata tertulis` : 'Belum ada draf naskah'}
                             </span>
-                            <span className="font-bold text-[var(--color-brand-600)] flex items-center gap-1 group-hover:translate-x-1 transition-transform">
-                              {isFilled ? 'Buka Editor' : 'Tulis / Unggah'} <ArrowRight size={13} />
-                            </span>
+                            <button
+                              onClick={() => setActiveBabId(bab.id)}
+                              className="px-4 py-2 bg-[var(--color-brand-600)] hover:bg-[var(--color-brand-500)] text-white text-xs font-bold rounded-xl flex items-center gap-1.5 transition-all shadow-xs hover:shadow"
+                            >
+                              <span>{isFilled ? 'Buka Editor Bab' : 'Tulis / Unggah Draf'}</span>
+                              <ArrowRight size={13} />
+                            </button>
                           </div>
                         </div>
                       );
@@ -1244,15 +1799,53 @@ export default function WorkspaceClient() {
                       {activeUpload ? <FileCheck size={20} /> : activeWords > 0 ? <Edit3 size={20} /> : <FileText size={20} />}
                     </div>
                     <div>
-                      <div className="font-bold text-sm text-zinc-900 flex items-center gap-2">
-                        <span>{activeBab?.title}</span>
+                      <div className="font-bold text-sm text-zinc-900 flex items-center gap-2 flex-wrap">
+                        {editingBabId === activeBabId ? (
+                          <div className="flex items-center gap-1.5">
+                            <input
+                              type="text"
+                              value={editingBabDraft}
+                              onChange={(e) => setEditingBabDraft(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleSaveRenameBab(activeBabId);
+                                if (e.key === 'Escape') setEditingBabId(null);
+                              }}
+                              autoFocus
+                              className="text-sm font-bold px-2 py-0.5 border border-[var(--color-brand-600)] rounded-md outline-none bg-white text-zinc-900"
+                            />
+                            <button
+                              onClick={() => handleSaveRenameBab(activeBabId)}
+                              className="p-1 text-emerald-600 hover:bg-emerald-50 rounded"
+                            >
+                              <Check size={14} />
+                            </button>
+                            <button
+                              onClick={() => setEditingBabId(null)}
+                              className="p-1 text-zinc-400 hover:bg-zinc-100 rounded"
+                            >
+                              <X size={14} />
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="flex items-center gap-1.5">
+                            <span>{activeBab?.title}</span>
+                            <button
+                              onClick={() => { setEditingBabId(activeBabId); setEditingBabDraft(activeBab?.title || ''); }}
+                              title="Ubah judul bab"
+                              className="p-1 text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 rounded transition-colors"
+                            >
+                              <Edit3 size={13} />
+                            </button>
+                          </span>
+                        )}
+
                         {activeUpload ? (
                           <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
                             Berkas: {activeUpload.fileName}
                           </span>
                         ) : activeWords > 0 ? (
                           <span className="text-[10px] font-bold text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full">
-                            Draf Manual ({activeWords} kata)
+                            Draf ({activeWords} kata)
                           </span>
                         ) : (
                           <span className="text-[10px] font-medium text-zinc-500 bg-zinc-100 px-2 py-0.5 rounded-full">
@@ -1269,7 +1862,7 @@ export default function WorkspaceClient() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <button
                       onClick={() => fileInputRef.current?.click()}
                       className="px-3 py-1.5 bg-white border border-zinc-200 hover:bg-zinc-50 text-zinc-700 text-xs font-semibold rounded-xl transition-colors flex items-center gap-1.5 shadow-xs"
@@ -1291,7 +1884,7 @@ export default function WorkspaceClient() {
                     {(activeWords > 0 || activeUpload) && (
                       <button
                         onClick={() => handleResetBab(activeBabId)}
-                        className="px-3 py-1.5 bg-zinc-100 hover:bg-rose-50 hover:text-rose-600 text-zinc-600 text-xs font-semibold rounded-xl transition-colors flex items-center gap-1"
+                        className="px-3 py-1.5 bg-zinc-100 hover:bg-zinc-200 text-zinc-600 text-xs font-semibold rounded-xl transition-colors flex items-center gap-1"
                         title="Kosongkan isi bab ini"
                       >
                         <Trash2 size={13} />
@@ -1304,7 +1897,110 @@ export default function WorkspaceClient() {
                     >
                       Ubah Margin
                     </button>
+                    {/* ALWAYS VISIBLE HAPUS BAB BUTTON! */}
+                    <button
+                      onClick={() => handleDeleteBab(activeBabId)}
+                      className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold rounded-xl transition-colors flex items-center gap-1.5"
+                      title="Hapus bab ini dari struktur dokumen"
+                    >
+                      <Trash2 size={13} />
+                      <span>Hapus Bab</span>
+                    </button>
                   </div>
+                </div>
+
+                {/* SUB-BAB MANAGER BAR DIRECTLY IN MAIN SECTION (ABOVE EDITOR) */}
+                <div className="bg-white border border-zinc-200 rounded-2xl p-4 shadow-xs space-y-2.5">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div className="flex items-center gap-2">
+                      <Layers size={15} className="text-[var(--color-brand-600)]" />
+                      <h4 className="font-bold text-xs md:text-sm text-zinc-900">
+                        Sub-bab {activeBab?.title} ({activeBab?.children?.length || 0})
+                      </h4>
+                      <span className="text-[11px] text-zinc-400 hidden md:inline">
+                        · Tambah atau hapus poin sub-bab langsung dari sini
+                      </span>
+                    </div>
+
+                    {/* ALWAYS VISIBLE BUTTON TO ADD SUB-BAB! */}
+                    <button
+                      onClick={() => handleAddSubBab(activeBabId)}
+                      className="px-3 py-1.5 bg-[var(--color-brand-50)] text-[var(--color-brand-700)] hover:bg-[var(--color-brand-100)] border border-[var(--color-brand-200)] text-xs font-bold rounded-xl flex items-center gap-1.5 transition-all shadow-2xs"
+                    >
+                      <Plus size={13} />
+                      <span>Tambah Sub-bab</span>
+                    </button>
+                  </div>
+
+                  {/* List of Sub-babs as Chips */}
+                  {activeBab?.children && activeBab.children.length > 0 ? (
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      {activeBab.children.map((sub) => (
+                        <div
+                          key={sub.id}
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-50 border border-zinc-200 rounded-xl text-xs font-semibold text-zinc-800 shadow-2xs"
+                        >
+                          {editingSubBabId === sub.id ? (
+                            <div className="flex items-center gap-1">
+                              <input
+                                type="text"
+                                value={editingSubBabDraft}
+                                onChange={(e) => setEditingSubBabDraft(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') handleSaveRenameSubBab(activeBabId, sub.id);
+                                  if (e.key === 'Escape') setEditingSubBabId(null);
+                                }}
+                                autoFocus
+                                className="px-2 py-0.5 text-xs font-bold border border-[var(--color-brand-600)] rounded-md outline-none bg-white text-zinc-900 w-44"
+                              />
+                              <button
+                                onClick={() => handleSaveRenameSubBab(activeBabId, sub.id)}
+                                className="p-1 text-emerald-600 hover:bg-emerald-50 rounded"
+                              >
+                                <Check size={12} />
+                              </button>
+                              <button
+                                onClick={() => setEditingSubBabId(null)}
+                                className="p-1 text-zinc-400 hover:bg-zinc-100 rounded"
+                              >
+                                <X size={12} />
+                              </button>
+                            </div>
+                          ) : (
+                            <>
+                              <span className="font-semibold text-zinc-800">{sub.title}</span>
+                              <div className="flex items-center gap-0.5 ml-1">
+                                <button
+                                  onClick={() => { setEditingSubBabId(sub.id); setEditingSubBabDraft(sub.title); }}
+                                  title="Ubah nama sub-bab"
+                                  className="p-1 text-zinc-400 hover:text-zinc-700 hover:bg-zinc-200/60 rounded transition-colors"
+                                >
+                                  <Edit3 size={11} />
+                                </button>
+                                <button
+                                  onClick={(e) => handleDeleteSubBab(activeBabId, sub.id, e)}
+                                  title="Hapus sub-bab ini"
+                                  className="p-1 text-zinc-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors"
+                                >
+                                  <Trash2 size={11} />
+                                </button>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-xs text-zinc-400 italic flex items-center justify-between py-1">
+                      <span>Belum ada sub-bab di bab ini.</span>
+                      <button
+                        onClick={() => handleInsertScaffold(activeBabId)}
+                        className="text-xs font-bold text-[var(--color-brand-600)] hover:underline flex items-center gap-1"
+                      >
+                        <Sparkles size={12} /> Pasang Kerangka Sub-bab Otomatis
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {/* Hidden File Input for uploading to this Bab */}
@@ -1455,6 +2151,21 @@ export default function WorkspaceClient() {
             )}
           </div>
         </aside>
+      )}
+
+      {/* Quota Exhausted Modal */}
+      {quotaExhaustedFeature && (
+        <QuotaModal
+          featureKey={quotaExhaustedFeature}
+          isOpen={true}
+          onClose={() => setQuotaExhaustedFeature(null)}
+          onPurchased={() => {
+            setQuotaExhaustedFeature(null);
+            if (quotaExhaustedFeature === 'kompilasi') {
+              setIsCompilationModalOpen(true);
+            }
+          }}
+        />
       )}
     </div>
   );

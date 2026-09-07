@@ -5,6 +5,9 @@ import Link from "next/link";
 import { GraduationCap, Loader2, Send, Sword, ChevronRight, ArrowLeft, XCircle, User, Mic, MicOff, Volume2, VolumeX } from "lucide-react";
 import { useAIChat } from "@/hooks/useAIChat";
 import { useJenjang } from "@/hooks/useJenjang";
+import { checkFeatureQuota, consumeFeatureQuota } from "@/lib/quota";
+import QuotaBanner from "@/components/quota/QuotaBanner";
+import QuotaModal from "@/components/quota/QuotaModal";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -24,6 +27,7 @@ export default function SidangPage() {
   const [formData, setFormData] = useState({ abstrak: "", dosenPersona: 1 });
   const { messages, input, setInput, isLoading, error, sendMessage, startConversation, reset } = useAIChat({ api: "/api/ai/sidang" });
   const [hasStarted, setHasStarted] = useState(false);
+  const [isQuotaModalOpen, setIsQuotaModalOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Voice states - default to true as requested
@@ -216,6 +220,15 @@ export default function SidangPage() {
       alert("Mohon pastikan judul sudah tersimpan dan abstrak telah diisi.");
       return;
     }
+
+    // Quota check & enforcement
+    const quotaCheck = checkFeatureQuota('sidang');
+    if (!quotaCheck.allowed) {
+      setIsQuotaModalOpen(true);
+      return;
+    }
+    consumeFeatureQuota('sidang');
+
     const selectedPersona = PERSONAS.find(p => p.id === formData.dosenPersona);
     const searchParams = new URLSearchParams(window.location.search);
     const practiceQ = searchParams.get("q");
@@ -279,11 +292,14 @@ ${formData.abstrak}
       )}
 
       {!hasStarted && (
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="flex-1">
-            <h1 className="font-display font-bold text-3xl text-[var(--color-text-primary)]">Sidang Simulator</h1>
-            <p className="text-[var(--color-text-secondary)] mt-2">Latih mental dan argumenmu dengan simulasi sidang {labelLower} interaktif - langsung dengan AI Dosen Penguji.</p>
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex-1">
+              <h1 className="font-display font-bold text-3xl text-[var(--color-text-primary)]">Sidang Simulator</h1>
+              <p className="text-[var(--color-text-secondary)] mt-1 text-sm">Latih mental dan argumenmu dengan simulasi sidang {labelLower} interaktif - langsung dengan AI Dosen Penguji.</p>
+            </div>
           </div>
+          <QuotaBanner featureKey="sidang" />
         </div>
       )}
 
@@ -543,6 +559,13 @@ ${formData.abstrak}
           </div>
         </div>
       )}
+
+      {/* Quota Exhausted Modal */}
+      <QuotaModal
+        featureKey="sidang"
+        isOpen={isQuotaModalOpen}
+        onClose={() => setIsQuotaModalOpen(false)}
+      />
     </div>
   );
 }

@@ -42,11 +42,11 @@ export default async function DashboardPage() {
           <Link href="/workspace" className="p-4 bg-[var(--color-brand-50)] border-2 border-[var(--color-brand-200)] rounded-xl hover:border-[var(--color-brand-500)] transition-all group shadow-sm">
             <div className="flex items-center justify-between">
               <h3 className="font-bold text-[var(--color-brand-700)] group-hover:text-[var(--color-brand-600)] transition-colors flex items-center gap-1.5">
-                <FileEdit size={18} /> Workspace Draf
+                <FileEdit size={18} /> Workspace
               </h3>
-              <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-[var(--color-brand-600)] text-white">Utama</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-[var(--color-brand-600)] text-white">Draf</span>
             </div>
-            <p className="text-xs text-[var(--color-brand-900)]/80 mt-1.5">Upload naskah per bab, atur format & AI parafrase.</p>
+            <p className="text-xs text-[var(--color-brand-900)]/80 mt-1.5">Ruang kerja tugas akhir yang terintegrasi dengan AI.</p>
           </Link>
           <Link href="/sidang/arena" className="p-4 bg-[var(--color-bg-surface)] border border-[var(--color-bg-muted)] rounded-xl hover:border-[var(--color-brand-400)] transition-colors group">
             <h3 className="font-semibold text-[var(--color-text-primary)] group-hover:text-[var(--color-brand-600)] transition-colors">🎯 Arena Sidang</h3>
