@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { 
   FileText, BookOpen, Clock, PanelRight, Settings, X, Check, 
   Upload, Download, FileCheck, File as FileIcon, Sparkles, LayoutGrid, Plus, 
@@ -838,9 +839,17 @@ export default function WorkspaceClient() {
   };
   
   // Chapter-based State
+  const searchParams = useSearchParams();
   const [jenjang, setJenjang] = useState('S1');
   const [outline, setOutline] = useState<OutlineItem[]>([]);
   const [activeBabId, setActiveBabId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const babParam = searchParams?.get('bab');
+    if (babParam) {
+      setActiveBabId(babParam);
+    }
+  }, [searchParams]);
 
   // Dropdown states
   const [isProgressOpen, setIsProgressOpen] = useState(false);
@@ -880,9 +889,11 @@ export default function WorkspaceClient() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Load state from localStorage on mount
+  // Load state from localStorage on mount & sync across pages
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window === 'undefined') return;
+
+    const loadState = () => {
       const ob = localStorage.getItem('bbr_onboarding');
       let j = 'S1';
       if (ob) {
@@ -925,13 +936,26 @@ export default function WorkspaceClient() {
       if (savedFormat) {
         try { setFormat(JSON.parse(savedFormat)); } catch {}
       }
-    }
+    };
+
+    loadState();
+
+    window.addEventListener('storage', loadState);
+    window.addEventListener('bbr_workspace_updated', loadState);
+
+    return () => {
+      window.removeEventListener('storage', loadState);
+      window.removeEventListener('bbr_workspace_updated', loadState);
+    };
   }, []);
 
   // Save outline helper
   const saveOutline = (newOutline: OutlineItem[]) => {
     setOutline(newOutline);
     localStorage.setItem('bbr_outline', JSON.stringify(newOutline));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('bbr_workspace_updated'));
+    }
   };
 
   // Add Bab
@@ -1055,12 +1079,18 @@ export default function WorkspaceClient() {
     setContents(updated);
     localStorage.setItem('bbr_bab_contents', JSON.stringify(updated));
     setLastSavedTime(new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('bbr_workspace_updated'));
+    }
   };
 
   // Save uploads handler
   const saveUploads = (newUploads: Record<string, UploadedBab>) => {
     setUploads(newUploads);
     localStorage.setItem('bbr_bab_uploads', JSON.stringify(newUploads));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('bbr_workspace_updated'));
+    }
   };
 
   const handleSaveFormat = (newFormat: DocFormat) => {

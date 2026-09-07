@@ -1,16 +1,16 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Home, FileEdit, Wrench, GraduationCap, User, LogOut,
   PanelLeftClose, PanelLeftOpen
 } from "lucide-react";
+import { useSidebar } from "@/hooks/useSidebar";
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const [isOpen, setIsOpen] = useState(true);
+  const { isOpen, setIsOpen } = useSidebar();
 
   const links = [
     { href: "/dashboard", label: "Beranda", icon: Home },
@@ -29,9 +29,9 @@ export default function Sidebar() {
           <>
             <div className="flex flex-col select-none">
               <span className="font-display font-bold text-xs tracking-wider text-[var(--color-brand-800)]/80 uppercase leading-tight">
-                BelajarBareng
+                Belajar Bareng
               </span>
-              <span className="font-display font-black text-2xl bg-gradient-to-r from-[var(--color-brand-600)] to-[var(--color-brand-400)] bg-clip-text text-transparent leading-tight tracking-tight">
+              <span className="font-display font-black text-3xl bg-gradient-to-r from-[var(--color-brand-600)] to-[var(--color-brand-400)] bg-clip-text text-transparent leading-tight tracking-tight">
                 Roselini
               </span>
             </div>
