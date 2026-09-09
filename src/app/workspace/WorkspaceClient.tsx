@@ -822,7 +822,7 @@ interface UploadedBab {
 }
 
 export default function WorkspaceClient() {
-  const [rightSidebarOpen, setRightSidebarOpen] = useState(true);
+  const [rightSidebarOpen, setRightSidebarOpen] = useState(false);
   const [activeRightPanel, setActiveRightPanel] = useState<'comments' | 'citations' | 'ai'>('citations');
   const [selectedText, setSelectedText] = useState<string | null>(null);
   const [isFormatModalOpen, setIsFormatModalOpen] = useState(false);
