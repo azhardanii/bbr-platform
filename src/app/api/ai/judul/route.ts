@@ -1,8 +1,31 @@
 import { MODELS, ai } from "@/lib/ai";
+import { auth } from "@/lib/auth";
+import { checkServerQuota, consumeServerQuota, logAiUsage } from "@/lib/quotaServer";
 
 export const maxDuration = 60;
 
 export async function POST(req: Request) {
+  // Auth
+  const session = await auth();
+  if (!session?.user?.id) {
+    return new Response(
+      JSON.stringify({ error: "Silakan login terlebih dahulu." }),
+      { status: 401, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
+  const userId = session.user.id;
+  const role = ((session.user as any).role || "free") as "free" | "member" | "admin";
+
+  // Quota check
+  const quotaCheck = await checkServerQuota(userId, role, "judulFinder");
+  if (!quotaCheck.allowed) {
+    return new Response(
+      JSON.stringify({ error: "Kuota Judul Finder Anda sudah habis. Silakan upgrade atau beli add-on.", quota: quotaCheck }),
+      { status: 429, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
   try {
     const { prompt, jenjang = "skripsi" } = await req.json();
 
@@ -31,14 +54,14 @@ Contoh format respons:
     });
 
     const textOutput = interaction.output_text || "[]";
-    
-    // Membersihkan kemungkinan markdown code blocks
     const cleanJson = textOutput.replace(/```json/g, "").replace(/```/g, "").trim();
-    
+
+    // Consume quota + log
+    consumeServerQuota(userId, role, "judulFinder").catch(console.error);
+    logAiUsage({ userId, feature: "judulFinder", model: MODELS.REASONING }).catch(console.error);
+
     return new Response(cleanJson, {
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
     });
   } catch (error) {
     console.error("AI Error:", error);
@@ -48,4 +71,3 @@ Contoh format respons:
     );
   }
 }
-

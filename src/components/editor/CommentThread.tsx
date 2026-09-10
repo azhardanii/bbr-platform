@@ -13,43 +13,44 @@ interface Comment {
   quote?: string;
 }
 
-const mockComments: Comment[] = [
-  {
-    id: '1',
-    author: 'Dr. Budi Santoso',
-    role: 'supervisor',
-    text: 'Tolong perjelas variabel X di bagian ini. Teorinya kurang kuat.',
-    timestamp: '2 jam yang lalu',
-    resolved: false,
-    quote: 'Dalam penelitian ini, variabel X memiliki pengaruh...',
-  },
-  {
-    id: '2',
-    author: 'Anda (Mahasiswa)',
-    role: 'student',
-    text: 'Baik Pak, sudah saya tambahkan rujukan dari Jurnal Y.',
-    timestamp: '1 jam yang lalu',
-    resolved: false,
-  }
-];
+interface Comment {
+  id: string;
+  author: string;
+  role: 'student' | 'supervisor';
+  text: string;
+  timestamp: string;
+  resolved: boolean;
+  quote?: string;
+}
 
 export default function CommentThread({ selectedTextForNewComment }: { selectedTextForNewComment?: string | null }) {
-  const [comments, setComments] = useState<Comment[]>(mockComments);
+  const [comments, setComments] = useState<Comment[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("bbr_workspace_comments");
+        if (saved) return JSON.parse(saved);
+      } catch {}
+    }
+    return [];
+  });
   const [newReply, setNewReply] = useState('');
 
   const handleSend = () => {
     if (!newReply.trim()) return;
-    setComments([
-      ...comments, 
-      {
-        id: Date.now().toString(),
-        author: 'Anda (Mahasiswa)',
-        role: 'student',
-        text: newReply,
-        timestamp: 'Baru saja',
-        resolved: false,
-      }
-    ]);
+    const newComment: Comment = {
+      id: Date.now().toString(),
+      author: 'Anda (Mahasiswa)',
+      role: 'student',
+      text: newReply,
+      timestamp: 'Baru saja',
+      resolved: false,
+      quote: selectedTextForNewComment || undefined,
+    };
+    const updated = [...comments, newComment];
+    setComments(updated);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("bbr_workspace_comments", JSON.stringify(updated));
+    }
     setNewReply('');
   };
 
@@ -63,6 +64,16 @@ export default function CommentThread({ selectedTextForNewComment }: { selectedT
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {comments.length === 0 && !selectedTextForNewComment && (
+          <div className="flex flex-col items-center justify-center text-center h-full py-8 text-zinc-400">
+            <UserCircle2 size={36} className="mb-2 opacity-40" />
+            <p className="text-xs font-semibold text-zinc-600 dark:text-zinc-300">Belum ada diskusi</p>
+            <p className="text-[11px] text-zinc-400 mt-1 max-w-[200px]">
+              Tulis catatan atau sorot teks di naskah untuk memulai catatan diskusi bimbingan.
+            </p>
+          </div>
+        )}
+
         {comments.map((comment, idx) => (
           <div key={comment.id} className={`flex gap-3 ${comment.role === 'student' ? 'flex-row-reverse' : 'flex-row'}`}>
             <UserCircle2 

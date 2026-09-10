@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import NextTopLoader from 'nextjs-toploader';
 import ScrollToTop from "@/components/ScrollToTop";
+import AuthProvider from "@/components/providers/AuthProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -32,7 +33,9 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col">
         <NextTopLoader color="#7B2020" showSpinner={true} shadow="0 0 10px #7B2020,0 0 5px #7B2020" />
         <ScrollToTop />
-        {children}
+        <AuthProvider>
+          {children}
+        </AuthProvider>
       </body>
     </html>
   );

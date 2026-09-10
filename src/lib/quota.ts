@@ -1,7 +1,6 @@
-// src/lib/quota.ts
-// Sistem Manajemen Kuota, Unit Economics, & Add-on BelajarBareng Roselini (BBR)
+import { isUserAdmin } from './roles';
 
-export type PlanTier = 'free' | 'lifetime';
+export type PlanTier = 'free' | 'lifetime' | 'admin';
 
 export type FeatureKey = 
   | 'parafrase'
@@ -185,7 +184,7 @@ export function createInitialQuota(tier: PlanTier = 'free'): UserQuotaState {
   (Object.keys(FEATURES_CONFIG) as FeatureKey[]).forEach((key) => {
     const config = FEATURES_CONFIG[key];
     features[key] = {
-      limit: tier === 'lifetime' ? config.lifetimeLimit : config.freeLimit,
+      limit: tier === 'admin' ? -1 : tier === 'lifetime' ? config.lifetimeLimit : config.freeLimit,
       used: 0,
     };
   });
@@ -206,6 +205,13 @@ export function getUserQuota(): UserQuotaState {
     return createInitialQuota('free');
   }
 
+  // Check if active user is admin via cached session
+  const email = localStorage.getItem('bbr_user_email');
+  const role = localStorage.getItem('bbr_user_role');
+  if (isUserAdmin(email, role)) {
+    return createInitialQuota('admin');
+  }
+
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (!stored) {
@@ -215,6 +221,10 @@ export function getUserQuota(): UserQuotaState {
     }
     const parsed: UserQuotaState = JSON.parse(stored);
     
+    if (parsed.planTier === 'admin') {
+      return createInitialQuota('admin');
+    }
+
     // Pastikan semua fitur terdefinisi (backward compatibility)
     let needsUpdate = false;
     (Object.keys(FEATURES_CONFIG) as FeatureKey[]).forEach((key) => {
@@ -265,6 +275,20 @@ export interface QuotaCheckResult {
 export function checkFeatureQuota(key: FeatureKey): QuotaCheckResult {
   const state = getUserQuota();
   const feature = FEATURES_CONFIG[key];
+
+  // Admin user always has unlimited access
+  if (state.planTier === 'admin') {
+    return {
+      allowed: true,
+      remaining: 999999,
+      limit: -1,
+      used: 0,
+      isNearLimit: false,
+      percentageUsed: 0,
+      feature,
+    };
+  }
+
   const usage = state.features[key] || { limit: feature.freeLimit, used: 0 };
   
   const remaining = Math.max(0, usage.limit - usage.used);
@@ -293,12 +317,16 @@ export function checkFeatureQuota(key: FeatureKey): QuotaCheckResult {
  * Return true jika berhasil konsumsi, false jika kuota sudah habis.
  */
 export function consumeFeatureQuota(key: FeatureKey): boolean {
+  const state = getUserQuota();
+  if (state.planTier === 'admin') {
+    return true; // Admin never consumes quota
+  }
+
   const check = checkFeatureQuota(key);
   if (!check.allowed) {
     return false;
   }
 
-  const state = getUserQuota();
   if (state.features[key]) {
     state.features[key].used += 1;
     saveUserQuota(state);

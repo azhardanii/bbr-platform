@@ -1,14 +1,36 @@
 import { MODELS, generateStreamingText } from "@/lib/ai";
+import { auth } from "@/lib/auth";
+import { checkServerQuota, consumeServerQuota, logAiUsage } from "@/lib/quotaServer";
 
 export const maxDuration = 60;
 
 export async function POST(req: Request) {
+  // Auth
+  const session = await auth();
+  if (!session?.user?.id) {
+    return new Response(
+      JSON.stringify({ error: "Silakan login terlebih dahulu." }),
+      { status: 401, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
+  const userId = session.user.id;
+  const role = ((session.user as any).role || "free") as "free" | "member" | "admin";
+
+  // Quota check
+  const quotaCheck = await checkServerQuota(userId, role, "spss");
+  if (!quotaCheck.allowed) {
+    return new Response(
+      JSON.stringify({ error: "Kuota SPSS Interpreter Anda sudah habis. Silakan upgrade atau beli add-on.", quota: quotaCheck }),
+      { status: 429, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
   try {
     const { prompt, jenjang = "skripsi" } = await req.json();
 
     const jenjangLabel = jenjang === "tesis" ? "tesis (S2)" : jenjang === "disertasi" ? "disertasi (S3)" : "skripsi (S1)";
 
-    // Parse the structured data from the prompt
     let data;
     try {
       data = JSON.parse(prompt);
@@ -40,6 +62,10 @@ Prinsip kerja Kamu:
       systemInstruction,
       prompt: userPrompt,
     });
+
+    // Consume quota + log
+    consumeServerQuota(userId, role, "spss").catch(console.error);
+    logAiUsage({ userId, feature: "spss", model: MODELS.CREATIVE }).catch(console.error);
 
     return new Response(stream, {
       headers: {

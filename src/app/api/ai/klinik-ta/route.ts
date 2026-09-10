@@ -1,8 +1,31 @@
 import { MODELS, generateText } from "@/lib/ai";
+import { auth } from "@/lib/auth";
+import { checkServerQuota, consumeServerQuota, logAiUsage } from "@/lib/quotaServer";
 
-export const maxDuration = 60; // Allow longer duration for large documents
+export const maxDuration = 60;
 
 export async function POST(req: Request) {
+  // Auth
+  const session = await auth();
+  if (!session?.user?.id) {
+    return new Response(
+      JSON.stringify({ error: "Silakan login terlebih dahulu." }),
+      { status: 401, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
+  const userId = session.user.id;
+  const role = ((session.user as any).role || "free") as "free" | "member" | "admin";
+
+  // Quota check — klinik-ta uses writingAssistant quota
+  const quotaCheck = await checkServerQuota(userId, role, "writingAssistant");
+  if (!quotaCheck.allowed) {
+    return new Response(
+      JSON.stringify({ error: "Kuota Klinik TA Anda sudah habis. Silakan upgrade atau beli add-on.", quota: quotaCheck }),
+      { status: 429, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
   try {
     const { text, jenjang } = await req.json();
 
@@ -50,39 +73,31 @@ Kembalikan respons murni dalam bentuk JSON dengan struktur berikut (tanpa awalan
   "summary": "Ringkasan diagnosis kesehatan draf secara keseluruhan (1 paragraf). Sampaikan layaknya dokter memberi tahu kondisi pasien.",
   "items": {
     "1.1": {
-      "pass": true, // true jika sehat/memenuhi standar, false jika butuh diobati/revisi
+      "pass": true,
       "reason": "Diagnosis mengapa bagian ini sehat atau sakit (berdasarkan draf).",
       "suggestion": "Resep obat/saran perbaikan konkret jika fail, atau tips menjaga kesehatan bab ini jika pass."
     },
-    "1.2": {
-      "pass": false,
-      "reason": "...",
-      "suggestion": "..."
-    },
-    // Wajib sertakan SEMUA ID dari 1.1 sampai 5.3
+    "1.2": { "pass": false, "reason": "...", "suggestion": "..." }
   }
 }
 DILARANG KERAS mengembalikan apapun selain teks JSON murni. Pastikan format JSON valid.`;
 
-    const result = await generateText({
-      model: MODELS.REASONING,
-      systemInstruction,
-      prompt: text,
-    });
+    const result = await generateText({ model: MODELS.REASONING, systemInstruction, prompt: text });
 
     let jsonResult;
     try {
-        let cleanStr = result.trim();
-        if (cleanStr.startsWith('```json')) {
-            cleanStr = cleanStr.replace(/^```json\n/, '').replace(/\n```$/, '');
-        } else if (cleanStr.startsWith('```')) {
-            cleanStr = cleanStr.replace(/^```\n/, '').replace(/\n```$/, '');
-        }
-        jsonResult = JSON.parse(cleanStr);
-    } catch (e) {
-        console.error("Failed to parse JSON:", result);
-        throw new Error("Gagal mengurai respons AI.");
+      let cleanStr = result.trim();
+      if (cleanStr.startsWith("```json")) cleanStr = cleanStr.replace(/^```json\n/, "").replace(/\n```$/, "");
+      else if (cleanStr.startsWith("```")) cleanStr = cleanStr.replace(/^```\n/, "").replace(/\n```$/, "");
+      jsonResult = JSON.parse(cleanStr);
+    } catch {
+      console.error("Failed to parse JSON:", result);
+      throw new Error("Gagal mengurai respons AI.");
     }
+
+    // Consume quota + log
+    consumeServerQuota(userId, role, "writingAssistant").catch(console.error);
+    logAiUsage({ userId, feature: "writingAssistant", model: MODELS.REASONING }).catch(console.error);
 
     return new Response(JSON.stringify(jsonResult), {
       headers: { "Content-Type": "application/json" },

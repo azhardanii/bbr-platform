@@ -1,8 +1,16 @@
 import { NextResponse } from "next/server";
 import { ai, MODELS } from "@/lib/ai";
+import { auth } from "@/lib/auth";
 
+// keywords is a lightweight utility (used inside tools), no quota deduction needed
+// but requires authentication
 export async function POST(req: Request) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Silakan login terlebih dahulu." }, { status: 401 });
+    }
+
     const { judul } = await req.json();
 
     if (!judul) {

@@ -1,31 +1,87 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
 import { 
   User, Mail, Shield, LogOut, Video, Link as LinkIcon, Copy, CheckCircle2, 
-  Zap, ShoppingCart, AlertCircle, RefreshCw, Sparkles, ArrowRight, Check 
+  Zap, ShoppingCart, AlertCircle, RefreshCw, Sparkles, ArrowRight, Check,
+  BarChart2, FileEdit
 } from "lucide-react";
 import Link from "next/link";
 import { 
   getUserQuota, checkFeatureQuota, consumeFeatureQuota, 
   setPlanTier, resetUserQuotaDemo, FEATURES_CONFIG, FeatureKey, 
-  UserQuotaState 
+  UserQuotaState, createInitialQuota, saveUserQuota
 } from "@/lib/quota";
+import { isUserAdmin } from "@/lib/roles";
 import QuotaModal from "@/components/quota/QuotaModal";
 
+const FEATURE_ROUTES: Record<FeatureKey, string> = {
+  parafrase: "/tools/parafrase",
+  writingAssistant: "/tools/klinik-ta",
+  judulFinder: "/tools/judul-finder",
+  spss: "/tools/spss-pls",
+  sidang: "/sidang",
+  sitasi: "/tools/bibliometrik",
+  scriptWa: "/tools/script-wa",
+  kompilasi: "/workspace",
+};
+
 export default function ProfilPage() {
+  const { data: session, update: updateSession } = useSession();
+  const userId = session?.user?.id || "default";
+  const userEmail = session?.user?.email?.toLowerCase().trim() || "";
+  const userRole = (session?.user as any)?.role || "free";
+  const isAdmin = isUserAdmin(userEmail, userRole);
+
   const [activeTab, setActiveTab] = useState("kuota");
   const [copied, setCopied] = useState(false);
-  const [quotaState, setQuotaState] = useState<UserQuotaState>(() => getUserQuota());
+  const [quotaState, setQuotaState] = useState<UserQuotaState>(() => {
+    if (isAdmin) return createInitialQuota("admin");
+    return getUserQuota();
+  });
   const [selectedFeatureForModal, setSelectedFeatureForModal] = useState<FeatureKey | null>(null);
 
   const refreshQuota = () => {
-    setQuotaState(getUserQuota());
+    if (isAdmin) {
+      setQuotaState(createInitialQuota("admin"));
+    } else {
+      setQuotaState(getUserQuota());
+    }
   };
 
   useEffect(() => {
     window.addEventListener("bbr-quota-updated", refreshQuota);
     return () => window.removeEventListener("bbr-quota-updated", refreshQuota);
+  }, [isAdmin]);
+
+  // Fetch authoritative user quota & profile from PostgreSQL database
+  useEffect(() => {
+    fetch("/api/user/quota")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.isAdmin || data.role === "admin") {
+          const adminQuota = createInitialQuota("admin");
+          setQuotaState(adminQuota);
+          saveUserQuota(adminQuota);
+        } else if (data.quota) {
+          const features = {} as any;
+          Object.keys(data.quota).forEach((k) => {
+            features[k] = {
+              limit: data.quota[k].limit,
+              used: data.quota[k].used,
+            };
+          });
+          const newState: UserQuotaState = {
+            planTier: data.role === "member" ? "lifetime" : "free",
+            purchasedAddons: [],
+            features,
+            lastUpdated: new Date().toISOString(),
+          };
+          setQuotaState(newState);
+        }
+      })
+      .catch(() => {});
   }, []);
 
   const handleCopyLink = () => {
@@ -33,13 +89,15 @@ export default function ProfilPage() {
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
+
   const [userData, setUserData] = useState<any>({ namaLengkap: "Mahasiswa", jenjang: "S1", jurusan: "" });
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({ namaLengkap: "", jenjang: "S1", jurusan: "" });
 
   useEffect(() => {
+    // 1. Instant load from local cache if present
     if (typeof window !== "undefined") {
-      const ob = localStorage.getItem("bbr_onboarding");
+      const ob = localStorage.getItem(`bbr_${userId}_onboarding`) || localStorage.getItem("bbr_onboarding");
       if (ob) {
         try {
           const parsed = JSON.parse(ob);
@@ -48,19 +106,59 @@ export default function ProfilPage() {
         } catch (e) {}
       }
     }
-  }, []);
 
-  const handleSaveProfile = () => {
-    const ob = localStorage.getItem("bbr_onboarding");
+    // 2. Fetch authoritative profile from database
+    fetch("/api/user/onboarding")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.user) {
+          const u = data.user;
+          const fresh = {
+            namaLengkap: u.nama_lengkap || "Mahasiswa",
+            jenjang: u.jenjang || "S1",
+            jurusan: u.jurusan || "",
+            universitas: u.universitas || "",
+            semester: u.semester || 8,
+            punyaJudul: u.punya_judul ? "Sudah" : "Belum",
+            judulSkripsi: u.judul_skripsi || "",
+          };
+          setUserData(fresh);
+          setEditForm({ namaLengkap: fresh.namaLengkap, jenjang: fresh.jenjang, jurusan: fresh.jurusan });
+          if (typeof window !== "undefined") {
+            if (userId) localStorage.setItem(`bbr_${userId}_onboarding`, JSON.stringify(fresh));
+            localStorage.setItem("bbr_onboarding", JSON.stringify(fresh));
+          }
+        }
+      })
+      .catch(() => {});
+  }, [userId]);
+
+  const handleSaveProfile = async () => {
+    const ob = localStorage.getItem(`bbr_${userId}_onboarding`) || localStorage.getItem("bbr_onboarding");
     let parsed = {};
     if (ob) {
       try { parsed = JSON.parse(ob); } catch (e) {}
     }
     const updated = { ...parsed, ...editForm };
+    localStorage.setItem(`bbr_${userId}_onboarding`, JSON.stringify(updated));
     localStorage.setItem("bbr_onboarding", JSON.stringify(updated));
     setUserData(updated);
     setIsEditing(false);
     window.dispatchEvent(new Event("storage"));
+
+    // Sync to PostgreSQL database
+    try {
+      await fetch("/api/user/onboarding", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updated),
+      });
+      if (updateSession) {
+        await updateSession({ name: updated.namaLengkap });
+      }
+    } catch (e) {
+      console.warn("[ProfilPage] Could not update profile in database:", e);
+    }
   };
 
   const handleToggleTier = () => {
@@ -106,80 +204,158 @@ export default function ProfilPage() {
       {activeTab === "kuota" && (
         <div className="space-y-6 animate-in slide-in-from-right-4">
           {/* Active Plan Banner */}
-          <div className="rounded-3xl border-2 border-[var(--color-brand-200)] bg-white p-6 md:p-7 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-5">
-            <div className="flex items-start gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-[var(--color-brand-50)] text-[var(--color-brand-700)] flex items-center justify-center shrink-0 border border-[var(--color-brand-200)] shadow-xs">
-                {quotaState.planTier === 'lifetime' ? <Sparkles size={28} /> : <Zap size={28} />}
-              </div>
-              <div>
-                <div className="flex items-center gap-2.5">
-                  <h2 className="text-xl font-black text-zinc-900">
-                    {quotaState.planTier === 'lifetime' ? 'Paket Lifetime Mahasiswa' : 'Paket Coba Gratis (Free Starter)'}
-                  </h2>
-                  <span className={`text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full border ${
-                    quotaState.planTier === 'lifetime' 
-                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
-                      : 'bg-zinc-100 text-zinc-700 border-zinc-200'
-                  }`}>
-                    {quotaState.planTier === 'lifetime' ? 'Aktif Selamanya' : 'Free Trial'}
-                  </span>
+          {isAdmin ? (
+            <div className="rounded-3xl border-2 border-violet-300 bg-gradient-to-br from-white via-violet-50/40 to-purple-50/50 p-6 md:p-8 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <div className="flex items-start gap-4">
+                <div className="w-14 h-14 rounded-2xl bg-violet-600 text-white flex items-center justify-center shrink-0 shadow-md ring-4 ring-violet-100">
+                  <Shield size={28} />
                 </div>
-                <p className="text-xs text-zinc-500 mt-1 max-w-xl">
-                  {quotaState.planTier === 'lifetime'
-                    ? 'Akses penuh ke seluruh 8 tools AI BBR dengan kuota ribuan pemakaian untuk menyelesaikan skripsi sampai wisuda.'
-                    : 'Anda menggunakan kuota percobaan gratis. Saat kuota habis, Anda dapat membeli add-on satuan per fitur atau upgrade ke Lifetime.'}
-                </p>
+                <div>
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    <h2 className="text-xl md:text-2xl font-black text-zinc-900">
+                      Akun Administrator Platform
+                    </h2>
+                    <span className="text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full bg-violet-100 text-violet-700 border border-violet-200 shadow-2xs">
+                      Unlimited Access
+                    </span>
+                  </div>
+                  <p className="text-xs text-zinc-600 mt-1.5 max-w-xl leading-relaxed">
+                    Anda terdaftar sebagai <strong>Administrator Belajar Bareng Roselini</strong>. Anda memiliki akses tanpa batas kuota (unlimited) untuk seluruh fitur AI, simulator sidang, interpretasi olah data SPSS, dan akses ke sistem Monitoring platform.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3 shrink-0">
+                <Link
+                  href="/monitoring"
+                  className="px-4 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-bold text-xs shadow-sm transition-all flex items-center gap-2 hover:scale-[1.02]"
+                >
+                  <BarChart2 size={15} />
+                  <span>Dashboard Monitoring</span>
+                </Link>
+                <Link
+                  href="/workspace"
+                  className="px-4 py-2.5 rounded-xl bg-white hover:bg-zinc-50 text-zinc-800 font-bold text-xs transition-all border border-zinc-200 shadow-2xs flex items-center gap-2"
+                >
+                  <FileEdit size={15} />
+                  <span>Buka Workspace</span>
+                </Link>
               </div>
             </div>
+          ) : (
+            <div className="rounded-3xl border-2 border-[var(--color-brand-200)] bg-white p-6 md:p-7 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-5">
+              <div className="flex items-start gap-4">
+                <div className="w-14 h-14 rounded-2xl bg-[var(--color-brand-50)] text-[var(--color-brand-700)] flex items-center justify-center shrink-0 border border-[var(--color-brand-200)] shadow-xs">
+                  {quotaState.planTier === 'lifetime' ? <Sparkles size={28} /> : <Zap size={28} />}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2.5">
+                    <h2 className="text-xl font-black text-zinc-900">
+                      {quotaState.planTier === 'lifetime' ? 'Paket Lifetime Mahasiswa' : 'Paket Coba Gratis (Free Starter)'}
+                    </h2>
+                    <span className={`text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full border ${
+                      quotaState.planTier === 'lifetime' 
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
+                        : 'bg-zinc-100 text-zinc-700 border-zinc-200'
+                    }`}>
+                      {quotaState.planTier === 'lifetime' ? 'Aktif Selamanya' : 'Free Trial'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-zinc-500 mt-1 max-w-xl">
+                    {quotaState.planTier === 'lifetime'
+                      ? 'Akses penuh ke seluruh 8 tools AI BBR dengan kuota ribuan pemakaian untuk menyelesaikan skripsi sampai wisuda.'
+                      : 'Anda menggunakan kuota percobaan gratis. Saat kuota habis, Anda dapat membeli add-on satuan per fitur atau upgrade ke Lifetime.'}
+                  </p>
+                </div>
+              </div>
 
-            <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-              {quotaState.planTier === 'free' ? (
-                <button
-                  onClick={() => setPlanTier('lifetime')}
-                  className="px-5 py-2.5 rounded-xl bg-[var(--color-brand-600)] hover:bg-[var(--color-brand-700)] text-white font-bold text-xs shadow-sm transition-all flex items-center gap-2 cursor-pointer"
-                >
-                  <Sparkles size={14} />
-                  <span>Upgrade ke Lifetime (Rp 199.000)</span>
-                </button>
-              ) : (
-                <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-3.5 py-2 rounded-xl border border-emerald-200 flex items-center gap-1.5">
-                  <CheckCircle2 size={14} /> Akses Penuh Aktif
-                </span>
-              )}
-
-              {/* Demo Mode Toggle Button */}
-              <button
-                onClick={handleToggleTier}
-                className="px-3 py-2 rounded-xl bg-zinc-100 hover:bg-zinc-200 text-zinc-700 font-semibold text-xs transition-colors border border-zinc-200 cursor-pointer"
-                title="Beralih tier untuk demo pengujian kuota"
-              >
-                Simulasi: {quotaState.planTier === 'free' ? 'Ubah ke Lifetime' : 'Ubah ke Free'}
-              </button>
-              <button
-                onClick={() => { resetUserQuotaDemo(quotaState.planTier); refreshQuota(); }}
-                className="p-2 rounded-xl bg-zinc-100 hover:bg-zinc-200 text-zinc-600 transition-colors border border-zinc-200 cursor-pointer"
-                title="Reset Kuota ke Default"
-              >
-                <RefreshCw size={14} />
-              </button>
+              <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+                {quotaState.planTier === 'free' ? (
+                  <button
+                    onClick={() => setPlanTier('lifetime')}
+                    className="px-5 py-2.5 rounded-xl bg-[var(--color-brand-600)] hover:bg-[var(--color-brand-700)] text-white font-bold text-xs shadow-sm transition-all flex items-center gap-2 cursor-pointer"
+                  >
+                    <Sparkles size={14} />
+                    <span>Upgrade ke Lifetime (Rp 199.000)</span>
+                  </button>
+                ) : (
+                  <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-3.5 py-2 rounded-xl border border-emerald-200 flex items-center gap-1.5">
+                    <CheckCircle2 size={14} /> Akses Penuh Aktif
+                  </span>
+                )}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Feature Quota Cards Grid */}
           <div>
             <div className="flex items-center justify-between mb-3.5">
               <div>
-                <h3 className="font-bold text-base text-zinc-900">Rincian Pemakaian Kuota Tiap Fitur</h3>
-                <p className="text-xs text-zinc-500">Pantau sisa kuota dan lakukan top-up satuan tanpa langganan bulanan</p>
+                <h3 className="font-bold text-base text-zinc-900">
+                  {isAdmin ? "Status Akses Seluruh Fitur AI" : "Rincian Pemakaian Kuota Tiap Fitur"}
+                </h3>
+                <p className="text-xs text-zinc-500">
+                  {isAdmin 
+                    ? "Sebagai Administrator, seluruh fitur AI dapat digunakan tanpa batas kuota."
+                    : "Pantau sisa kuota dan lakukan top-up satuan tanpa langganan bulanan."}
+                </p>
               </div>
-              <span className="text-xs font-bold text-[var(--color-brand-700)] bg-[var(--color-brand-50)] px-3 py-1 rounded-xl border border-[var(--color-brand-200)]">
-                8 Fitur Aktif
+              <span className={`text-xs font-bold px-3 py-1 rounded-xl border ${
+                isAdmin 
+                  ? "bg-violet-50 text-violet-700 border-violet-200" 
+                  : "bg-[var(--color-brand-50)] text-[var(--color-brand-700)] border-[var(--color-brand-200)]"
+              }`}>
+                {isAdmin ? "Akses Unlimited Aktif" : "8 Fitur Aktif"}
               </span>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {(Object.keys(FEATURES_CONFIG) as FeatureKey[]).map((key) => {
                 const feature = FEATURES_CONFIG[key];
+                const route = FEATURE_ROUTES[key] || "/tools";
+
+                if (isAdmin) {
+                  return (
+                    <div 
+                      key={key}
+                      className="rounded-2xl border-2 border-violet-100 hover:border-violet-300 p-5 bg-white transition-all flex flex-col justify-between shadow-xs group"
+                    >
+                      <div>
+                        <div className="flex items-start justify-between gap-2 mb-2.5">
+                          <div>
+                            <h4 className="font-bold text-sm text-zinc-900 group-hover:text-violet-700 transition-colors">{feature.name}</h4>
+                            <p className="text-[11px] text-zinc-500 line-clamp-1">{feature.description}</p>
+                          </div>
+                          <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-violet-50 text-violet-700 border border-violet-200 shrink-0">
+                            Unlimited
+                          </span>
+                        </div>
+
+                        <div className="flex items-baseline justify-between text-xs mb-1.5 font-medium">
+                          <span className="text-zinc-500">Status Kuota:</span>
+                          <span className="text-violet-700 font-bold flex items-center gap-1">
+                            <Sparkles size={12} className="text-violet-600" /> Bebas Kuota (Admin)
+                          </span>
+                        </div>
+
+                        <div className="w-full bg-violet-100 h-2 rounded-full overflow-hidden mb-4">
+                          <div className="h-full bg-gradient-to-r from-violet-600 to-indigo-600 rounded-full w-full" />
+                        </div>
+                      </div>
+
+                      <div className="pt-3 border-t border-zinc-100">
+                        <Link
+                          href={route}
+                          className="w-full py-2 px-3 rounded-xl text-xs font-bold bg-violet-50 hover:bg-violet-100 text-violet-700 border border-violet-200 transition-all flex items-center justify-center gap-1.5"
+                        >
+                          <span>Buka Fitur</span>
+                          <ArrowRight size={13} />
+                        </Link>
+                      </div>
+                    </div>
+                  );
+                }
+
                 const usage = quotaState.features[key] || { limit: feature.freeLimit, used: 0 };
                 const remaining = Math.max(0, usage.limit - usage.used);
                 const pct = usage.limit > 0 ? Math.min(100, Math.round((usage.used / usage.limit) * 100)) : 100;
@@ -205,7 +381,7 @@ export default function ProfilPage() {
                           <h4 className="font-bold text-sm text-zinc-900">{feature.name}</h4>
                           <p className="text-[11px] text-zinc-500 line-clamp-1">{feature.description}</p>
                         </div>
-                        <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full border shrink-0 ${
+                        <span className={`text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full border shrink-0 ${
                           isZero 
                             ? 'bg-rose-100 text-rose-700 border-rose-200' 
                             : isNear 
@@ -241,15 +417,13 @@ export default function ProfilPage() {
 
                     {/* Action Buttons */}
                     <div className="flex items-center justify-between gap-2 pt-3 border-t border-zinc-100">
-                      {/* Simulate Usage Button */}
-                      <button
-                        onClick={() => handleSimulateConsume(key)}
-                        disabled={isZero}
-                        className="px-2.5 py-1.5 rounded-lg bg-zinc-100 hover:bg-zinc-200 text-zinc-600 text-[11px] font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-                        title="Simulasi pakai 1x untuk tes limit"
+                      <Link
+                        href={route}
+                        className="px-3 py-1.5 rounded-xl text-xs font-bold text-zinc-700 hover:text-[var(--color-brand-600)] hover:bg-[var(--color-brand-50)] transition-colors flex items-center gap-1"
                       >
-                        + Pakai 1x
-                      </button>
+                        <span>Buka</span>
+                        <ArrowRight size={12} />
+                      </Link>
 
                       {/* Buy Addon Button */}
                       <button
@@ -271,7 +445,7 @@ export default function ProfilPage() {
           </div>
 
           {/* Purchased Addons History */}
-          {quotaState.purchasedAddons && quotaState.purchasedAddons.length > 0 && (
+          {!isAdmin && quotaState.purchasedAddons && quotaState.purchasedAddons.length > 0 && (
             <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-xs">
               <h3 className="font-bold text-sm text-zinc-900 mb-3">Riwayat Pembelian Add-on Kuota</h3>
               <div className="space-y-2">
@@ -301,17 +475,37 @@ export default function ProfilPage() {
       {/* TAB 2: INFORMASI AKUN */}
       {activeTab === "akun" && (
         <div className="bg-[var(--color-bg-surface)] border border-[var(--color-bg-muted)] p-8 rounded-2xl shadow-sm flex flex-col items-center max-w-2xl mx-auto mt-6 animate-in slide-in-from-right-4">
-          <div className="w-24 h-24 bg-[var(--color-brand-100)] text-[var(--color-brand-600)] rounded-full flex items-center justify-center mb-6 shadow-inner">
-            <User size={48} />
+          <div className={`w-24 h-24 rounded-full flex items-center justify-center mb-4 shadow-inner ${
+            isAdmin ? "bg-violet-100 text-violet-700 ring-4 ring-violet-50" : "bg-[var(--color-brand-100)] text-[var(--color-brand-600)]"
+          }`}>
+            {isAdmin ? <Shield size={46} /> : <User size={48} />}
           </div>
           
           {!isEditing ? (
             <>
               <h2 className="text-2xl font-bold text-[var(--color-text-primary)] mb-1 text-center">{userData.namaLengkap}</h2>
               <p className="text-[var(--color-brand-600)] font-semibold mb-2">{userData.jenjang} {userData.jurusan ? `- ${userData.jurusan}` : ''}</p>
-              <p className="text-[var(--color-text-secondary)] mb-6 flex items-center gap-2 text-center">
-                <Mail size={16} /> {userData.namaLengkap.toLowerCase().replace(/\s+/g, '')}@kampus.ac.id
+              
+              <div className="flex items-center gap-2 mb-4">
+                {isAdmin ? (
+                  <span className="px-3.5 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-violet-100 text-violet-700 border border-violet-200 flex items-center gap-1.5 shadow-2xs">
+                    <Shield size={13} className="text-violet-600" /> Administrator Platform
+                  </span>
+                ) : userRole === 'member' || quotaState.planTier === 'lifetime' ? (
+                  <span className="px-3.5 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-emerald-100 text-emerald-700 border border-emerald-200 flex items-center gap-1.5">
+                    <CheckCircle2 size={13} className="text-emerald-600" /> Member Lifetime
+                  </span>
+                ) : (
+                  <span className="px-3.5 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-zinc-100 text-zinc-700 border border-zinc-200">
+                    Free Starter
+                  </span>
+                )}
+              </div>
+
+              <p className="text-[var(--color-text-secondary)] mb-6 flex items-center gap-2 text-center text-sm">
+                <Mail size={16} /> {session?.user?.email || `${userData.namaLengkap.toLowerCase().replace(/\s+/g, "")}@gmail.com`}
               </p>
+              
               <button 
                 onClick={() => setIsEditing(true)}
                 className="mb-8 px-6 py-2 bg-[var(--color-bg-muted)] text-[var(--color-text-primary)] font-semibold rounded-lg hover:bg-gray-200 transition-colors"
@@ -354,13 +548,13 @@ export default function ProfilPage() {
               <div className="flex gap-2 pt-2">
                 <button 
                   onClick={() => setIsEditing(false)}
-                  className="flex-1 py-2 bg-[var(--color-bg-muted)] text-[var(--color-text-primary)] font-semibold rounded-lg hover:bg-gray-200 transition-colors"
+                  className="flex-1 py-2 bg-[var(--color-bg-muted)] text-[var(--color-text-body)] font-semibold rounded-lg"
                 >
                   Batal
                 </button>
                 <button 
                   onClick={handleSaveProfile}
-                  className="flex-1 py-2 bg-[var(--color-brand-600)] text-white font-semibold rounded-lg hover:bg-[var(--color-brand-500)] transition-colors"
+                  className="flex-1 py-2 bg-[var(--color-brand-600)] text-white font-semibold rounded-lg"
                 >
                   Simpan
                 </button>
@@ -368,121 +562,73 @@ export default function ProfilPage() {
             </div>
           )}
 
-          <div className="w-full space-y-4">
-            <div className="p-4 rounded-xl border border-[var(--color-bg-muted)] bg-white flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Shield className={quotaState.planTier === 'lifetime' ? "text-emerald-600" : "text-amber-600"} size={20} />
-                <div>
-                  <p className="font-semibold text-[var(--color-text-primary)]">
-                    {quotaState.planTier === 'lifetime' ? 'Paket Lifetime Mahasiswa' : 'Paket Coba Gratis (Free Starter)'}
-                  </p>
-                  <p className="text-sm text-[var(--color-text-secondary)]">
-                    {quotaState.planTier === 'lifetime' ? 'Akses AI Penuh + Kuota Melimpah' : 'Kuota Starter Uji Coba'}
-                  </p>
-                </div>
-              </div>
-              <span className={`px-3 py-1 text-xs font-bold rounded-full border ${
-                quotaState.planTier === 'lifetime'
-                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                  : 'bg-zinc-100 text-zinc-700 border-zinc-200'
-              }`}>
-                {quotaState.planTier === 'lifetime' ? 'LIFETIME PRO' : 'FREE TRIAL'}
-              </span>
-            </div>
-            
-            <Link href="/login" className="block">
-              <button className="w-full py-3 mt-4 bg-red-50 text-red-600 font-semibold rounded-lg hover:bg-red-100 transition-colors flex items-center justify-center gap-2 border border-red-200">
-                <LogOut size={18} /> Keluar Akun
-              </button>
-            </Link>
+          <div className="w-full border-t border-[var(--color-bg-muted)] pt-6 flex justify-between items-center text-sm text-[var(--color-text-secondary)]">
+            <span>Draf Tugas Akhir Tersimpan</span>
+            <span className="font-semibold text-emerald-600 flex items-center gap-1">
+              <CheckCircle2 size={16} /> Tersinkronisasi PostgreSQL
+            </span>
           </div>
         </div>
       )}
 
+      {/* TAB 3: SESI BIMBINGAN */}
       {activeTab === "bimbingan" && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6 animate-in slide-in-from-right-4">
-          <div className="bg-[var(--color-brand-600)] text-white p-6 rounded-2xl shadow-sm flex items-center justify-between">
+        <div className="space-y-4 max-w-3xl mx-auto mt-6 animate-in slide-in-from-right-4">
+          <div className="bg-[var(--color-bg-surface)] border border-[var(--color-bg-muted)] p-6 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4">
             <div>
-              <p className="text-white/80 text-sm font-semibold mb-1">Sisa Sesi Bimbingan</p>
-              <h2 className="text-4xl font-display font-bold">2 <span className="text-xl font-normal opacity-80">sesi</span></h2>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                isAdmin ? "bg-violet-100 text-violet-700" : "bg-emerald-100 text-emerald-700"
+              }`}>
+                {isAdmin ? "Admin Priority Bimbingan" : "Summit Tier Aktif"}
+              </span>
+              <h3 className="font-bold text-lg text-[var(--color-text-primary)] mt-2">Bimbingan 1-on-1 bersama Kak Roseline</h3>
+              <p className="text-sm text-[var(--color-text-secondary)] mt-1">
+                {isAdmin ? "Akun Admin memiliki kuota konsultasi tak terbatas." : "Sisa 2 dari 2 sesi bimbingan private bulan ini."}
+              </p>
             </div>
-            <div className="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center">
-              <Video size={32} />
-            </div>
-          </div>
-          
-          <div className="bg-white border-2 border-[var(--color-brand-100)] p-6 rounded-2xl shadow-sm flex flex-col justify-center">
-            <h3 className="font-bold text-[var(--color-brand-600)] mb-2">Jadwal Berikutnya</h3>
-            <p className="text-lg font-semibold text-[var(--color-text-primary)]">Belum ada jadwal aktif</p>
-            <p className="text-sm text-[var(--color-text-secondary)] mt-1">Silakan hubungi Kak Roselini via WhatsApp untuk mengatur jadwal bimbingan Kamu.</p>
-            <button className="mt-4 px-4 py-2 bg-[var(--color-brand-50)] text-[var(--color-brand-600)] font-semibold rounded-lg border border-[var(--color-brand-100)] w-fit hover:bg-[var(--color-brand-100)] transition-colors">
-              Chat Admin WA
-            </button>
-          </div>
-
-          <div className="md:col-span-2 bg-[var(--color-bg-surface)] border border-[var(--color-bg-muted)] p-6 rounded-2xl shadow-sm">
-            <h3 className="font-bold text-[var(--color-text-primary)] mb-4">Riwayat Bimbingan</h3>
-            <div className="p-4 bg-white border border-[var(--color-bg-muted)] rounded-xl flex items-center justify-between opacity-70 grayscale">
-              <div>
-                <p className="font-semibold text-[var(--color-text-primary)]">Sesi 1: Bedah Judul & Kerangka</p>
-                <p className="text-xs text-[var(--color-text-secondary)] mt-1">12 Mei 2024, 19:00 WIB via Google Meet</p>
-              </div>
-              <span className="px-3 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-full">Selesai</span>
-            </div>
+            <a 
+              href="https://calendar.google.com" 
+              target="_blank" 
+              rel="noreferrer"
+              className="w-full md:w-auto px-5 py-2.5 bg-[var(--color-brand-600)] text-white font-semibold rounded-xl flex items-center justify-center gap-2 hover:bg-[var(--color-brand-500)] transition-colors whitespace-nowrap shadow-sm"
+            >
+              <Video size={18} /> Booking Jadwal
+            </a>
           </div>
         </div>
       )}
 
+      {/* TAB 4: AFILIASI */}
       {activeTab === "afiliasi" && (
-        <div className="space-y-6 mt-6 animate-in slide-in-from-right-4">
-          <div className="bg-amber-50 border border-amber-200 p-6 rounded-2xl shadow-sm">
-            <h3 className="font-bold text-amber-900 mb-2">Program Afiliasi BBR</h3>
-            <p className="text-amber-800 text-sm">Rekomendasikan platform ini ke teman kampusmu dan dapatkan komisi <strong>30% hingga 50%</strong> dari setiap penjualan yang menggunakan link referral kamu!</p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-[var(--color-bg-surface)] border border-[var(--color-bg-muted)] p-5 rounded-2xl shadow-sm">
-              <p className="text-[var(--color-text-secondary)] text-xs font-semibold mb-1">Total Klik</p>
-              <h2 className="text-2xl font-bold text-[var(--color-text-primary)]">24</h2>
-            </div>
-            <div className="bg-[var(--color-bg-surface)] border border-[var(--color-bg-muted)] p-5 rounded-2xl shadow-sm">
-              <p className="text-[var(--color-text-secondary)] text-xs font-semibold mb-1">Konversi</p>
-              <h2 className="text-2xl font-bold text-[var(--color-text-primary)]">2 <span className="text-sm font-normal opacity-70">pembelian</span></h2>
-            </div>
-            <div className="bg-[var(--color-brand-600)] text-white p-5 rounded-2xl shadow-sm">
-              <p className="text-white/80 text-xs font-semibold mb-1">Total Komisi</p>
-              <h2 className="text-2xl font-bold">Rp 238.000</h2>
-            </div>
-          </div>
-
-          <div className="bg-white border-2 border-[var(--color-bg-muted)] p-6 rounded-2xl shadow-sm">
-            <h3 className="font-bold text-[var(--color-text-primary)] mb-4">Link Referral Kamu</h3>
-            <div className="flex flex-col sm:flex-row gap-3">
-              <div className="flex-1 flex items-center gap-3 px-4 py-3 bg-[var(--color-bg-base)] border border-[var(--color-bg-muted)] rounded-lg">
-                <LinkIcon size={18} className="text-[var(--color-text-secondary)]" />
-                <span className="text-sm font-mono text-[var(--color-text-primary)] truncate">https://belajarbarengroselini.com/ref/BBR-MHS-2024</span>
+        <div className="space-y-6 max-w-3xl mx-auto mt-6 animate-in slide-in-from-right-4">
+          <div className="bg-gradient-to-r from-[var(--color-brand-600)] to-[var(--color-brand-700)] text-white p-8 rounded-2xl shadow-md">
+            <h2 className="font-display font-bold text-2xl mb-2">Program Mitra Belajar Bareng Roselini</h2>
+            <p className="text-white/80 text-sm max-w-xl">
+              Bagikan link referral unikmu ke teman sejurusan. Dapatkan komisi 20% untuk setiap teman yang meng-upgrade ke Summit Tier!
+            </p>
+            <div className="mt-6 flex flex-col sm:flex-row gap-3">
+              <div className="bg-white/10 border border-white/20 px-4 py-3 rounded-xl flex-1 flex items-center justify-between text-sm font-mono backdrop-blur-xs">
+                <span className="truncate">https://belajarbarengroselini.com/ref/BBR-MHS-2024</span>
               </div>
               <button 
                 onClick={handleCopyLink}
-                className={`px-6 py-3 font-semibold rounded-lg flex items-center justify-center gap-2 transition-colors ${copied ? 'bg-[var(--color-success)] text-white' : 'bg-[var(--color-brand-600)] text-white hover:bg-[var(--color-brand-500)]'}`}
+                className="px-6 py-3 bg-white text-[var(--color-brand-600)] font-bold rounded-xl flex items-center justify-center gap-2 hover:bg-gray-100 transition-colors shrink-0 shadow-sm"
               >
-                {copied ? <><CheckCircle2 size={18} /> Tersalin</> : <><Copy size={18} /> Salin Link</>}
+                {copied ? <CheckCircle2 size={18} /> : <Copy size={18} />}
+                {copied ? "Tersalin!" : "Salin Link"}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* MODAL PEMBELIAN ADDON KUOTA */}
+      {/* Modal Addon Quota */}
       {selectedFeatureForModal && (
         <QuotaModal
           featureKey={selectedFeatureForModal}
-          isOpen={true}
+          isOpen={!!selectedFeatureForModal}
           onClose={() => setSelectedFeatureForModal(null)}
-          onPurchased={() => {
-            refreshQuota();
-            setSelectedFeatureForModal(null);
-          }}
+          onPurchased={refreshQuota}
         />
       )}
     </div>

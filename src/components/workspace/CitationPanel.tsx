@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSession } from 'next-auth/react';
 import { Search, Plus, Book, ExternalLink, Quote, Trash2, Check, BookOpen, Sliders, Settings } from 'lucide-react';
 import type { CitationItem } from '@/components/editor/AIAssistantPopup';
 import AddCitationModal from '@/components/workspace/AddCitationModal';
@@ -27,6 +28,8 @@ const DEFAULT_CITATIONS: CitationItem[] = [
 ];
 
 export default function CitationPanel() {
+  const { data: session } = useSession();
+  const userId = session?.user?.id || 'default';
   const [citations, setCitations] = useState<CitationItem[]>([]);
   const [search, setSearch] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -38,25 +41,44 @@ export default function CitationPanel() {
 
   const loadCitations = () => {
     if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('bbr_citations');
+      const stored = localStorage.getItem(`bbr_${userId}_citations`) || localStorage.getItem('bbr_citations');
       if (stored) {
         try {
           const parsed = JSON.parse(stored);
           if (Array.isArray(parsed) && parsed.length > 0) {
             setCitations(parsed);
-            return;
           }
         } catch {}
       }
-      // Initialize with default citations if empty
-      setCitations(DEFAULT_CITATIONS);
-      localStorage.setItem('bbr_citations', JSON.stringify(DEFAULT_CITATIONS));
+
+      // Fetch from Database
+      fetch('/api/references')
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (data?.success && Array.isArray(data.citations) && data.citations.length > 0) {
+            const formatted = data.citations.map((c: any) => ({
+              id: c.id,
+              authors: c.authors || '',
+              year: c.year || '',
+              title: c.title,
+              journal: c.source || '',
+              url: c.doi_url || '',
+            }));
+            setCitations(formatted);
+            localStorage.setItem(`bbr_${userId}_citations`, JSON.stringify(formatted));
+            localStorage.setItem('bbr_citations', JSON.stringify(formatted));
+          } else if (!stored) {
+            setCitations(DEFAULT_CITATIONS);
+            localStorage.setItem('bbr_citations', JSON.stringify(DEFAULT_CITATIONS));
+          }
+        })
+        .catch(() => {});
     }
   };
 
   const loadFormatConfig = () => {
     if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('bbr_citation_format');
+      const stored = localStorage.getItem(`bbr_${userId}_citation_format`) || localStorage.getItem('bbr_citation_format');
       if (stored) {
         try { setFormatConfig(JSON.parse(stored)); } catch {}
       }
@@ -79,20 +101,48 @@ export default function CitationPanel() {
       window.removeEventListener('bbr-citation-format-changed', handleFormatChanged);
       window.removeEventListener('storage', handleAdded);
     };
-  }, []);
+  }, [userId]);
 
-  const handleManualAdd = (newCit: CitationItem) => {
+  const handleManualAdd = async (newCit: CitationItem) => {
     const updated = [newCit, ...citations];
     setCitations(updated);
+    localStorage.setItem(`bbr_${userId}_citations`, JSON.stringify(updated));
     localStorage.setItem('bbr_citations', JSON.stringify(updated));
     window.dispatchEvent(new Event('bbr-citation-added'));
+
+    // Persist to database
+    try {
+      await fetch('/api/references', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: newCit.id,
+          title: newCit.title,
+          authors: newCit.authors,
+          year: newCit.year,
+          source: newCit.journal || '',
+          doi_url: newCit.url || newCit.doi || '',
+          type: 'journal',
+        }),
+      });
+    } catch (e) {
+      console.warn('[CitationPanel] Could not save citation to database:', e);
+    }
   };
 
-  const handleDelete = (id?: string) => {
+  const handleDelete = async (id?: string) => {
     if (!id) return;
     const updated = citations.filter(c => c.id !== id);
     setCitations(updated);
+    localStorage.setItem(`bbr_${userId}_citations`, JSON.stringify(updated));
     localStorage.setItem('bbr_citations', JSON.stringify(updated));
+
+    // Delete in database
+    try {
+      await fetch(`/api/references?id=${id}`, { method: 'DELETE' });
+    } catch (e) {
+      console.warn('[CitationPanel] Could not delete citation from database:', e);
+    }
   };
 
   // Generate In-text citation copy according to active format config

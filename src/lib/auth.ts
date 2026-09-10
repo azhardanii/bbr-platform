@@ -1,6 +1,12 @@
 import NextAuth from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import { prisma } from "./db";
+import { ADMIN_EMAILS, isUserAdmin } from "./roles";
+
+export { ADMIN_EMAILS };
+
+/** @deprecated use ADMIN_EMAILS */
+export const VIP_EMAILS = ADMIN_EMAILS;
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
@@ -10,39 +16,106 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     }),
   ],
   callbacks: {
-    async signIn({ user, account, profile }) {
+    async signIn({ user, account }) {
       if (!user.email) return false;
 
-      // Upsert user into our database
-      const existingUser = await prisma.user.findUnique({
-        where: { email: user.email },
-      });
+      const normalizedEmail = user.email.toLowerCase().trim();
+      const isAdmin = isUserAdmin(normalizedEmail);
+      const role = isAdmin ? "admin" : "free";
+      const targetTier = isAdmin ? "summit" : "spark";
 
-      if (!existingUser) {
-        await prisma.user.create({
-          data: {
-            email: user.email,
-            nama_lengkap: user.name,
-            google_id: account?.providerAccountId,
-            tier: 'spark',
-          },
+      try {
+        const existingUser = await prisma.user.findUnique({
+          where: { email: normalizedEmail },
         });
+
+        if (!existingUser) {
+          await prisma.user.create({
+            data: {
+              email: normalizedEmail,
+              nama_lengkap: user.name || "Mahasiswa",
+              google_id: account?.providerAccountId,
+              tier: targetTier,
+              role,
+              onboarding_completed: false,
+            },
+          });
+        } else {
+          // Ensure admin users always have correct role + tier in DB
+          if (isAdmin && (existingUser.role !== "admin" || existingUser.tier !== "summit")) {
+            await prisma.user.update({
+              where: { email: normalizedEmail },
+              data: { role: "admin", tier: "summit" },
+            });
+          }
+        }
+      } catch (dbError) {
+        console.error("[Auth] Database error in signIn callback:", dbError);
+        // Still allow signing in even if DB is temporarily waking up
       }
 
       return true;
     },
-    async session({ session, token }) {
-      if (session.user?.email) {
-        const dbUser = await prisma.user.findUnique({
-          where: { email: session.user.email },
-        });
 
-        if (dbUser) {
-          session.user.id = dbUser.id;
-          // Inject custom fields into session
-          (session.user as any).tier = dbUser.tier;
-          (session.user as any).onboarding_completed = dbUser.onboarding_completed;
+    async jwt({ token, user, trigger, session }) {
+      const email = (user?.email || token.email)?.toLowerCase().trim();
+      const isAdmin = isUserAdmin(email, token.role as string);
+
+      if (user) {
+        token.email = email;
+        token.tier = isAdmin ? "summit" : "spark";
+        token.role = isAdmin ? "admin" : "free";
+      }
+
+      // If user session was updated (e.g. after onboarding)
+      if (trigger === "update" && session) {
+        if (session.onboarding_completed !== undefined) {
+          token.onboarding_completed = session.onboarding_completed;
         }
+        if (session.tier) token.tier = session.tier;
+        if (session.name) token.name = session.name;
+        if (session.role) token.role = session.role;
+      }
+
+      // Sync latest user data from DB
+      if (email) {
+        token.email = email;
+        try {
+          const dbUser = await prisma.user.findUnique({
+            where: { email },
+          });
+          if (dbUser) {
+            token.sub = dbUser.id;
+            token.tier = isAdmin ? "summit" : dbUser.tier;
+            token.role = isAdmin ? "admin" : (dbUser.role || "free");
+            token.onboarding_completed = dbUser.onboarding_completed ?? false;
+            token.name = dbUser.nama_lengkap || token.name;
+          }
+        } catch {
+          // Graceful fallback
+        }
+      }
+
+      // Unconditional admin guarantee
+      if (isAdmin) {
+        token.role = "admin";
+        token.tier = "summit";
+      }
+
+      return token;
+    },
+
+    async session({ session, token }) {
+      if (session.user) {
+        if (token.sub) {
+          session.user.id = token.sub;
+        }
+        const email = session.user.email?.toLowerCase().trim() || (token.email as string)?.toLowerCase().trim();
+        const isAdmin = isUserAdmin(email, token.role as string);
+
+        (session.user as any).tier = isAdmin ? "summit" : (token.tier || "spark");
+        (session.user as any).role = isAdmin ? "admin" : (token.role || "free");
+        (session.user as any).onboarding_completed = token.onboarding_completed ?? false;
       }
       return session;
     },
@@ -52,5 +125,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   },
   pages: {
     signIn: "/login",
+    error: "/login",
   },
 });

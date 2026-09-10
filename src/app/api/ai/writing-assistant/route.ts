@@ -1,8 +1,31 @@
 import { MODELS, generateText } from "@/lib/ai";
+import { auth } from "@/lib/auth";
+import { checkServerQuota, consumeServerQuota, logAiUsage } from "@/lib/quotaServer";
 
 export const maxDuration = 60;
 
 export async function POST(req: Request) {
+  // Auth
+  const session = await auth();
+  if (!session?.user?.id) {
+    return new Response(
+      JSON.stringify({ error: "Silakan login terlebih dahulu." }),
+      { status: 401, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
+  const userId = session.user.id;
+  const role = ((session.user as any).role || "free") as "free" | "member" | "admin";
+
+  // Quota check
+  const quotaCheck = await checkServerQuota(userId, role, "writingAssistant");
+  if (!quotaCheck.allowed) {
+    return new Response(
+      JSON.stringify({ error: "Kuota Asisten Penulisan Anda sudah habis. Silakan upgrade atau beli add-on.", quota: quotaCheck }),
+      { status: 429, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
   try {
     const { text, mode } = await req.json();
 
@@ -19,7 +42,6 @@ export async function POST(req: Request) {
 
     switch (mode) {
       case "expand":
-        // Use Gemini 3.7 Flash for deep academic expansion & authentic journal citation grounding
         targetModel = MODELS.ACADEMIC_DEEP;
         systemInstruction = `Kamu adalah Guru Besar dan Reviewer Jurnal Ilmiah Internasional bereputasi tinggi.
 Tugas:
@@ -42,17 +64,15 @@ Format Output WAJIB berupa format JSON valid tanpa tanda markdown pembungkus di 
         break;
 
       case "grammar":
-        // Use Gemini 3.5 Flash Lite (500/day) for high-speed precise PUEBI/EYD correction
         targetModel = MODELS.FAST_LIGHT;
         systemInstruction = `Kamu adalah pakar bahasa dan editor PUEBI/EYD Edisi V bahasa Indonesia untuk karya tulis ilmiah.
-Tugas: Perbaiki kesalahan ejaan, tanda baca, huruf kapital, dan kata-kata tidak baku (misal: banget -> sangat, cepet -> cepat, make -> menggunakan, bikin -> menyebabkan, pengen -> bertujuan untuk, beneran -> secara nyata, naikin -> meningkatkan, dll.) pada teks yang diberikan.
+Tugas: Perbaiki kesalahan ejaan, tanda baca, huruf kapital, dan kata-kata tidak baku pada teks yang diberikan.
 Aturan:
 - Pertahankan struktur kalimat asli sebanyak mungkin, fokus pada perbaikan kata tidak baku, ejaan, dan typo.
 - JANGAN sertakan penjelasan pembuka atau penutup. Langsung berikan hasil teks yang sudah diperbaiki secara utuh.`;
         break;
 
       case "shorten":
-        // Use Gemini 3.5 Flash Lite (500/day) for precise condensation
         targetModel = MODELS.FAST_LIGHT;
         systemInstruction = `Kamu adalah editor jurnal ilmiah spesialis ringkasan teks akademik.
 Tugas: Persingkat dan padatkan teks berikut agar lebih to-the-point, hilangkan kata-kata mubazir/bertele-tele tanpa menghilangkan data dan pesan substansialnya.
@@ -63,7 +83,6 @@ Aturan:
 
       case "paraphrase":
       default:
-        // Use Gemini 3.5 Flash (with fallback to 3.7) for high-tier academic sentence restructuring
         targetModel = MODELS.ACADEMIC_PARAPHRASE;
         systemInstruction = `Kamu adalah editor jurnal akademik profesional dengan keahlian tinggi dalam memparafrase teks ilmiah berbahasa Indonesia.
 Tugas: Ubah struktur kalimat secara signifikan menjadi kalimat ilmiah akademis yang elegan, objektif, dan formal.
@@ -75,13 +94,12 @@ Aturan:
         break;
     }
 
-    const rawResponse = await generateText({
-      model: targetModel,
-      systemInstruction,
-      prompt,
-    });
+    const rawResponse = await generateText({ model: targetModel, systemInstruction, prompt });
 
-    // Handle expand JSON parsing if present
+    // Consume quota + log
+    consumeServerQuota(userId, role, "writingAssistant").catch(console.error);
+    logAiUsage({ userId, feature: "writingAssistant", model: targetModel }).catch(console.error);
+
     if (mode === "expand") {
       try {
         const cleaned = rawResponse.replace(/```json/gi, "").replace(/```/g, "").trim();
@@ -89,11 +107,8 @@ Aturan:
         return new Response(JSON.stringify({
           result: parsed.expandedText || rawResponse,
           citation: parsed.citation || null,
-        }), {
-          headers: { "Content-Type": "application/json" },
-        });
-      } catch (jsonErr) {
-        // If LLM returned raw text, extract or return clean text
+        }), { headers: { "Content-Type": "application/json" } });
+      } catch {
         return new Response(JSON.stringify({ result: rawResponse, citation: null }), {
           headers: { "Content-Type": "application/json" },
         });

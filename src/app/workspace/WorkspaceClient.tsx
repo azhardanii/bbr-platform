@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { 
   FileText, BookOpen, Clock, PanelRight, Settings, X, Check, 
   Upload, Download, FileCheck, File as FileIcon, Sparkles, LayoutGrid, Plus, 
@@ -839,6 +840,28 @@ export default function WorkspaceClient() {
   };
   
   // Chapter-based State
+  const { data: session } = useSession();
+  const userId = session?.user?.id || 'default';
+  const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const triggerDatabaseSync = (outlineToSync: OutlineItem[], contentsToSync: Record<string, string>) => {
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    autoSaveTimerRef.current = setTimeout(async () => {
+      try {
+        await fetch('/api/workspace', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            outline: outlineToSync,
+            contents: contentsToSync,
+          }),
+        });
+      } catch (err) {
+        console.warn('[Workspace AutoSave] Could not sync to database:', err);
+      }
+    }, 1200);
+  };
+
   const searchParams = useSearchParams();
   const [jenjang, setJenjang] = useState('S1');
   const [outline, setOutline] = useState<OutlineItem[]>([]);
@@ -889,19 +912,19 @@ export default function WorkspaceClient() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Load state from localStorage on mount & sync across pages
+  // Load state from localStorage & Database on mount
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
     const loadState = () => {
-      const ob = localStorage.getItem('bbr_onboarding');
+      const ob = localStorage.getItem(`bbr_${userId}_onboarding`) || localStorage.getItem('bbr_onboarding');
       let j = 'S1';
       if (ob) {
         try { j = JSON.parse(ob)?.jenjang || 'S1'; } catch {}
       }
       setJenjang(j);
 
-      const savedOutline = localStorage.getItem('bbr_outline');
+      const savedOutline = localStorage.getItem(`bbr_${userId}_outline`) || localStorage.getItem('bbr_outline');
       if (savedOutline) {
         try {
           const parsed = JSON.parse(savedOutline);
@@ -922,7 +945,7 @@ export default function WorkspaceClient() {
         localStorage.setItem('bbr_outline', JSON.stringify(initial));
       }
 
-      const savedContents = localStorage.getItem('bbr_bab_contents');
+      const savedContents = localStorage.getItem(`bbr_${userId}_bab_contents`) || localStorage.getItem('bbr_bab_contents');
       if (savedContents) {
         try { setContents(JSON.parse(savedContents)); } catch {}
       }
@@ -936,6 +959,28 @@ export default function WorkspaceClient() {
       if (savedFormat) {
         try { setFormat(JSON.parse(savedFormat)); } catch {}
       }
+
+      // Fetch authoritative state from database for logged in user
+      fetch('/api/workspace')
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (data?.success) {
+            if (Array.isArray(data.outline) && data.outline.length > 0) {
+              setOutline(data.outline);
+              localStorage.setItem(`bbr_${userId}_outline`, JSON.stringify(data.outline));
+              localStorage.setItem('bbr_outline', JSON.stringify(data.outline));
+            }
+            if (data.contents && Object.keys(data.contents).length > 0) {
+              setContents((prev) => {
+                const merged = { ...prev, ...data.contents };
+                localStorage.setItem(`bbr_${userId}_bab_contents`, JSON.stringify(merged));
+                localStorage.setItem('bbr_bab_contents', JSON.stringify(merged));
+                return merged;
+              });
+            }
+          }
+        })
+        .catch(() => {});
     };
 
     loadState();
@@ -947,15 +992,17 @@ export default function WorkspaceClient() {
       window.removeEventListener('storage', loadState);
       window.removeEventListener('bbr_workspace_updated', loadState);
     };
-  }, []);
+  }, [userId]);
 
   // Save outline helper
   const saveOutline = (newOutline: OutlineItem[]) => {
     setOutline(newOutline);
+    localStorage.setItem(`bbr_${userId}_outline`, JSON.stringify(newOutline));
     localStorage.setItem('bbr_outline', JSON.stringify(newOutline));
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('bbr_workspace_updated'));
     }
+    triggerDatabaseSync(newOutline, contents);
   };
 
   // Add Bab
@@ -1077,11 +1124,13 @@ export default function WorkspaceClient() {
   const handleSaveContent = (babId: string, newHtml: string) => {
     const updated = { ...contents, [babId]: newHtml };
     setContents(updated);
+    localStorage.setItem(`bbr_${userId}_bab_contents`, JSON.stringify(updated));
     localStorage.setItem('bbr_bab_contents', JSON.stringify(updated));
     setLastSavedTime(new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }));
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('bbr_workspace_updated'));
     }
+    triggerDatabaseSync(outline, updated);
   };
 
   // Save uploads handler

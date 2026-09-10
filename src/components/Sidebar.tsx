@@ -2,15 +2,31 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useSession, signOut } from "next-auth/react";
 import {
   Home, FileEdit, Wrench, GraduationCap, User, LogOut,
-  PanelLeftClose, PanelLeftOpen
+  PanelLeftClose, PanelLeftOpen, BarChart2
 } from "lucide-react";
 import { useSidebar } from "@/hooks/useSidebar";
+import { isUserAdmin } from "@/lib/roles";
 
 export default function Sidebar() {
   const pathname = usePathname();
   const { isOpen, setIsOpen } = useSidebar();
+  const { data: session } = useSession();
+  const isAdmin = isUserAdmin(session?.user?.email, (session?.user as any)?.role);
+
+  const handleLogout = async () => {
+    try {
+      // Purge any local cached data to prevent data mixing between different users
+      Object.keys(localStorage).forEach((key) => {
+        if (key.startsWith("bbr_")) {
+          localStorage.removeItem(key);
+        }
+      });
+    } catch {}
+    await signOut({ callbackUrl: "/login" });
+  };
 
   const links = [
     { href: "/dashboard", label: "Beranda", icon: Home },
@@ -18,7 +34,14 @@ export default function Sidebar() {
     { href: "/tools", label: "Tools", icon: Wrench },
     { href: "/sidang", label: "Sidang", icon: GraduationCap },
     { href: "/profil", label: "Profil", icon: User },
+    // Admin-only link: injected conditionally below
   ];
+
+  const adminLinks = isAdmin
+    ? [{ href: "/monitoring", label: "Monitoring", icon: BarChart2, badge: "Admin" }]
+    : [];
+
+  const allLinks = [...links, ...adminLinks];
 
   return (
     <aside className={`hidden lg:flex flex-col border-r border-[var(--color-bg-muted)] bg-[var(--color-bg-surface)] h-full transition-all duration-300 relative ${isOpen ? "w-[260px]" : "w-[80px]"}`}>
@@ -63,24 +86,40 @@ export default function Sidebar() {
 
       {/* Navigation Links */}
       <nav className="flex-1 p-3 space-y-1.5 overflow-y-auto custom-scrollbar">
-        {links.map((link) => {
+        {/* Regular links */}
+        {allLinks.map((link) => {
           const isActive = pathname === link.href || (link.href !== "/dashboard" && pathname.startsWith(link.href));
+          const isAdminLink = link.href === "/monitoring";
           return (
             <Link
               key={link.href}
               href={link.href}
               title={!isOpen ? link.label : undefined}
-              className={`flex items-center ${isOpen ? "justify-between px-3.5 py-2.5" : "justify-center p-3"} rounded-xl transition-all font-medium ${isActive
-                ? "bg-[var(--color-brand-100)] text-[var(--color-brand-600)] border-l-4 border-[var(--color-brand-600)] shadow-xs"
-                : "text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-muted)] hover:text-[var(--color-text-primary)] border-l-4 border-transparent"
-                }`}
+              className={`flex items-center ${isOpen ? "justify-between px-3.5 py-2.5" : "justify-center p-3"} rounded-xl transition-all font-medium ${
+                isActive
+                  ? isAdminLink
+                    ? "bg-violet-100 text-violet-700 border-l-4 border-violet-600 shadow-xs"
+                    : "bg-[var(--color-brand-100)] text-[var(--color-brand-600)] border-l-4 border-[var(--color-brand-600)] shadow-xs"
+                  : "text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-muted)] hover:text-[var(--color-text-primary)] border-l-4 border-transparent"
+              }`}
             >
               <div className="flex items-center gap-3">
-                <link.icon size={20} className={isActive ? "text-[var(--color-brand-600)]" : "text-[var(--color-text-secondary)]"} />
+                <link.icon
+                  size={20}
+                  className={
+                    isActive
+                      ? isAdminLink ? "text-violet-700" : "text-[var(--color-brand-600)]"
+                      : "text-[var(--color-text-secondary)]"
+                  }
+                />
                 {isOpen && <span className="text-sm font-semibold">{link.label}</span>}
               </div>
               {isOpen && link.badge && !isActive && (
-                <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded-full bg-[var(--color-brand-50)] text-[var(--color-brand-600)] border border-[var(--color-brand-200)]">
+                <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full border ${
+                  isAdminLink
+                    ? "bg-violet-50 text-violet-600 border-violet-200"
+                    : "bg-[var(--color-brand-50)] text-[var(--color-brand-600)] border-[var(--color-brand-200)]"
+                }`}>
                   {link.badge}
                 </span>
               )}
@@ -89,16 +128,24 @@ export default function Sidebar() {
         })}
       </nav>
 
-      {/* Footer Area with Expand/Collapse & Logout */}
+      {/* Footer Area with Logout */}
       <div className="p-3 border-t border-[var(--color-bg-muted)] flex flex-col gap-1">
-        <Link
-          href="/api/auth/signout"
+        {/* Admin badge if applicable */}
+        {isAdmin && isOpen && (
+          <div className="px-3.5 py-2 mb-1 rounded-xl bg-violet-50 border border-violet-200 flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-violet-500 animate-pulse shrink-0" />
+            <span className="text-[11px] font-bold text-violet-700">Admin Access</span>
+          </div>
+        )}
+        <button
+          type="button"
+          onClick={handleLogout}
           title={!isOpen ? "Keluar" : undefined}
-          className={`flex items-center gap-3 text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-error)] font-medium transition-colors ${isOpen ? "px-3.5 py-2" : "justify-center p-2"
+          className={`flex items-center gap-3 text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-error)] font-medium transition-colors cursor-pointer w-full ${isOpen ? "px-3.5 py-2" : "justify-center p-2"
             }`}
         >
           <LogOut size={17} /> {isOpen && <span>Keluar</span>}
-        </Link>
+        </button>
       </div>
     </aside>
   );

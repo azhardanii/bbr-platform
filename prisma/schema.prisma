@@ -26,6 +26,9 @@ model User {
   preferred_ai         String?   // claude | chatgpt | perplexity
   onboarding_completed Boolean?  @default(false)
 
+  // Role
+  role                 String    @default("free")   // free | member | admin
+
   // Payment & Tier
   tier                 String    @default("spark")  // spark | drive | summit
   payment_ref          String?
@@ -48,6 +51,8 @@ model User {
   documents            Document[]
   references           Reference[]
   comments             Comment[]
+  aiUsageLogs          AiUsageLog[]
+  userQuotas           UserQuota[]
 
   @@map("users")
 }
@@ -218,4 +223,32 @@ model Comment {
   replies     Comment[] @relation("CommentToComment")
 
   @@map("comments")
+}
+
+model AiUsageLog {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id     String    @db.Uuid
+  feature     String    // parafrase | writingAssistant | judulFinder | spss | sidang | sitasi | scriptWa | kompilasi
+  model       String?   // AI model used
+  tokens_in   Int?
+  tokens_out  Int?
+  created_at  DateTime? @default(now()) @db.Timestamptz
+
+  user        User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("ai_usage_logs")
+}
+
+model UserQuota {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id     String    @db.Uuid
+  feature     String    // FeatureKey
+  used        Int       @default(0)
+  addon_bonus Int       @default(0)  // extra from purchased add-ons
+  updated_at  DateTime? @default(now()) @db.Timestamptz
+
+  user        User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, feature])
+  @@map("user_quotas")
 }

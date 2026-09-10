@@ -2,6 +2,43 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 
+export async function GET() {
+  try {
+    const session = await auth();
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const email = session.user.email.toLowerCase().trim();
+    const user = await prisma.user.findUnique({
+      where: { email },
+      select: {
+        id: true,
+        email: true,
+        nama_lengkap: true,
+        universitas: true,
+        jenjang: true,
+        jurusan: true,
+        semester: true,
+        punya_judul: true,
+        judul_skripsi: true,
+        tier: true,
+        role: true,
+        onboarding_completed: true,
+      },
+    });
+
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    return NextResponse.json({ user });
+  } catch (error: any) {
+    console.error("[GET /api/user/onboarding]", error);
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+  }
+}
+
 export async function PATCH(req: Request) {
   try {
     const session = await auth();
@@ -10,33 +47,48 @@ export async function PATCH(req: Request) {
     }
 
     const body = await req.json();
+    const nama_lengkap = body.nama_lengkap || body.namaLengkap;
+    const universitas = body.universitas;
+    const jenjang = body.jenjang || "S1";
+    const jurusan = body.jurusan;
+    const semester = body.semester !== undefined ? Number(body.semester) : 8;
+    const punya_judul = body.punya_judul !== undefined 
+      ? Boolean(body.punya_judul) 
+      : body.punyaJudul === "Sudah" || body.punyaJudul === "Ya" || body.punyaJudul === true;
+    const judul_skripsi = body.judul_skripsi !== undefined
+      ? body.judul_skripsi
+      : (punya_judul ? (body.judulSkripsi || body.judulTugasAkhir || null) : null);
     
     // Server-side validation
-    if (!body.nama_lengkap || body.nama_lengkap.length < 3) {
-      return NextResponse.json({ error: "Nama lengkap minimal 3 karakter" }, { status: 400 });
-    }
-    if (!body.universitas) {
-      return NextResponse.json({ error: "Universitas wajib diisi" }, { status: 400 });
-    }
-    if (!body.jurusan) {
-      return NextResponse.json({ error: "Jurusan wajib diisi" }, { status: 400 });
-    }
-    if (body.punya_judul && (!body.judul_skripsi || body.judul_skripsi.length < 20)) {
-      return NextResponse.json({ error: "Judul minimal 20 karakter" }, { status: 400 });
+    if (nama_lengkap && nama_lengkap.trim().length < 2) {
+      return NextResponse.json({ error: "Nama lengkap minimal 2 karakter" }, { status: 400 });
     }
 
-    const updatedUser = await prisma.user.update({
-      where: { email: session.user.email },
-      data: {
-        nama_lengkap: body.nama_lengkap,
-        universitas: body.universitas,
-        jenjang: body.jenjang,
-        jurusan: body.jurusan,
-        semester: Number(body.semester),
-        punya_judul: body.punya_judul,
-        judul_skripsi: body.punya_judul ? body.judul_skripsi : null,
-        // preferred_ai is no longer collected - AI is built-in now
+    const email = session.user.email.toLowerCase().trim();
+
+    const updatedUser = await prisma.user.upsert({
+      where: { email },
+      create: {
+        email,
+        nama_lengkap: nama_lengkap || "Mahasiswa",
+        universitas: universitas || "-",
+        jenjang,
+        jurusan: jurusan || "-",
+        semester,
+        punya_judul,
+        judul_skripsi,
         onboarding_completed: true,
+      },
+      update: {
+        nama_lengkap: nama_lengkap || undefined,
+        universitas: universitas || undefined,
+        jenjang: jenjang || undefined,
+        jurusan: jurusan || undefined,
+        semester: semester || undefined,
+        punya_judul: punya_judul !== undefined ? punya_judul : undefined,
+        judul_skripsi: judul_skripsi !== undefined ? judul_skripsi : undefined,
+        onboarding_completed: true,
+        updated_at: new Date(),
       },
     });
 

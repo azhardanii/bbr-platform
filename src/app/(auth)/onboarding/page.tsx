@@ -2,11 +2,14 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, ArrowRight, User, BookOpen, Bot, ShieldAlert } from "lucide-react";
+import { useSession } from "next-auth/react";
+import { Check, ArrowRight, User, BookOpen, Bot, ShieldAlert, Loader2 } from "lucide-react";
 
 export default function OnboardingPage() {
   const router = useRouter();
+  const { data: session, update: updateSession } = useSession();
   const [step, setStep] = useState(1);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     namaLengkap: "",
     universitas: "",
@@ -22,13 +25,39 @@ export default function OnboardingPage() {
     if (step < 3) setStep(step + 1);
   };
 
-  const handleFinish = () => {
-    // Save to localStorage as temporary DB replacement
-    localStorage.setItem("bbr_onboarding", JSON.stringify(formData));
-    localStorage.setItem("bbr_progress", JSON.stringify([
-      { bab: 1, pct: 0 }, { bab: 2, pct: 0 }, { bab: 3, pct: 0 }, { bab: 4, pct: 0 }, { bab: 5, pct: 0 }
-    ]));
-    router.push("/dashboard");
+  const handleFinish = async () => {
+    setIsSubmitting(true);
+    try {
+      // 1. Save directly to Database via API
+      await fetch("/api/user/onboarding", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+
+      // 2. Save user-scoped cache to local storage
+      const userId = session?.user?.id || "default";
+      localStorage.setItem(`bbr_${userId}_onboarding`, JSON.stringify(formData));
+      localStorage.setItem("bbr_onboarding", JSON.stringify(formData));
+      localStorage.setItem("bbr_progress", JSON.stringify([
+        { bab: 1, pct: 0 }, { bab: 2, pct: 0 }, { bab: 3, pct: 0 }, { bab: 4, pct: 0 }, { bab: 5, pct: 0 }
+      ]));
+
+      // 3. Update NextAuth session
+      if (updateSession) {
+        await updateSession({ onboarding_completed: true, name: formData.namaLengkap });
+      }
+
+      window.dispatchEvent(new Event("storage"));
+      router.push("/dashboard");
+    } catch (e) {
+      console.error("Onboarding submission error:", e);
+      // Fallback
+      localStorage.setItem("bbr_onboarding", JSON.stringify(formData));
+      router.push("/dashboard");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const renderStepIndicator = () => (
@@ -174,11 +203,21 @@ export default function OnboardingPage() {
               Kembali
             </button>
             <button 
-              disabled={step === 3 && !agreed}
+              disabled={(step === 3 && !agreed) || isSubmitting}
               onClick={step === 3 ? handleFinish : handleNext}
-              className={`px-6 py-3 font-semibold rounded-lg text-white transition-colors flex items-center gap-2 shadow-md ${step === 3 && !agreed ? 'bg-gray-400 cursor-not-allowed' : 'bg-[var(--color-brand-600)] hover:bg-[var(--color-brand-500)]'}`}
+              className={`px-6 py-3 font-semibold rounded-lg text-white transition-colors flex items-center gap-2 shadow-md ${(step === 3 && !agreed) || isSubmitting ? 'bg-gray-400 cursor-not-allowed' : 'bg-[var(--color-brand-600)] hover:bg-[var(--color-brand-500)]'}`}
             >
-              {step === 3 ? 'Mulai Belajar' : 'Lanjut'} <ArrowRight size={18} />
+              {isSubmitting ? (
+                <>
+                  <Loader2 size={18} className="animate-spin" />
+                  <span>Menyimpan...</span>
+                </>
+              ) : (
+                <>
+                  <span>{step === 3 ? 'Mulai Belajar' : 'Lanjut'}</span>
+                  <ArrowRight size={18} />
+                </>
+              )}
             </button>
           </div>
         </div>

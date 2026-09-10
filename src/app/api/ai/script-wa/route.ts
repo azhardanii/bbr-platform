@@ -1,8 +1,31 @@
 import { MODELS, generateStreamingText } from "@/lib/ai";
+import { auth } from "@/lib/auth";
+import { checkServerQuota, consumeServerQuota, logAiUsage } from "@/lib/quotaServer";
 
 export const maxDuration = 30;
 
 export async function POST(req: Request) {
+  // Auth
+  const session = await auth();
+  if (!session?.user?.id) {
+    return new Response(
+      JSON.stringify({ error: "Silakan login terlebih dahulu." }),
+      { status: 401, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
+  const userId = session.user.id;
+  const role = ((session.user as any).role || "free") as "free" | "member" | "admin";
+
+  // Quota check
+  const quotaCheck = await checkServerQuota(userId, role, "scriptWa");
+  if (!quotaCheck.allowed) {
+    return new Response(
+      JSON.stringify({ error: "Kuota Script WA Anda sudah habis. Silakan upgrade atau beli add-on.", quota: quotaCheck }),
+      { status: 429, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
   try {
     const { prompt } = await req.json();
 
@@ -33,6 +56,10 @@ CATATAN_END`;
       systemInstruction,
       prompt,
     });
+
+    // Consume quota + log
+    consumeServerQuota(userId, role, "scriptWa").catch(console.error);
+    logAiUsage({ userId, feature: "scriptWa", model: MODELS.FAST }).catch(console.error);
 
     return new Response(stream, {
       headers: {
