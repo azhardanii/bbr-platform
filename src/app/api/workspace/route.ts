@@ -107,6 +107,14 @@ export async function GET() {
   }
 }
 
+import { randomUUID } from "crypto";
+
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const ensureUUID = (id: string | undefined): string => {
+  if (id && UUID_REGEX.test(id)) return id;
+  return randomUUID();
+};
+
 // POST /api/workspace: Save/sync document outline and bab contents strictly for authenticated user
 export async function POST(req: Request) {
   try {
@@ -147,17 +155,20 @@ export async function POST(req: Request) {
     }
 
     // Save outline items & chapter contents transactionally
+    const activeOutlineIds: string[] = [];
     if (Array.isArray(outline) && outline.length > 0) {
       // Process each parent Bab
       for (let i = 0; i < outline.length; i++) {
         const bab = outline[i];
-        const babContent = (contents && contents[bab.id]) || null;
+        const babId = ensureUUID(bab.id);
+        activeOutlineIds.push(babId);
+        const babContent = (contents && (contents[bab.id] || contents[babId])) || null;
 
         // Upsert parent outline
         const parentOutline = await prisma.outline.upsert({
-          where: { id: bab.id },
+          where: { id: babId },
           create: {
-            id: bab.id,
+            id: babId,
             document_id: document.id,
             title: bab.title,
             order: i,
@@ -176,11 +187,14 @@ export async function POST(req: Request) {
         if (Array.isArray(bab.children)) {
           for (let j = 0; j < bab.children.length; j++) {
             const sub = bab.children[j];
-            const subContent = (contents && contents[sub.id]) || null;
+            const subId = ensureUUID(sub.id);
+            activeOutlineIds.push(subId);
+            const subContent = (contents && (contents[sub.id] || contents[subId])) || null;
+
             await prisma.outline.upsert({
-              where: { id: sub.id },
+              where: { id: subId },
               create: {
-                id: sub.id,
+                id: subId,
                 document_id: document.id,
                 title: sub.title,
                 order: j,
@@ -196,6 +210,16 @@ export async function POST(req: Request) {
             });
           }
         }
+      }
+
+      // Delete removed outlines that are no longer part of this document
+      if (activeOutlineIds.length > 0) {
+        await prisma.outline.deleteMany({
+          where: {
+            document_id: document.id,
+            id: { notIn: activeOutlineIds },
+          },
+        });
       }
     }
 

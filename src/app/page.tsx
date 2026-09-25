@@ -1777,7 +1777,7 @@ export default function Home() {
                     <div className="text-xs font-bold text-zinc-700 uppercase tracking-wider">Kuota Melimpah Hingga Lulus:</div>
                     <ul className="space-y-2.5">
                       {[
-                        "250x Parafrase AI Lengkap (Anti-Turnitin)",
+                        "250x Parafrase AI (Anti-Turnitin)",
                         "150x Asisten Penulisan & Bedah Draf Naskah",
                         "50x Judul Finder & ACC Checker",
                         "50x SPSS & SmartPLS Interpreter Bab 4",
@@ -1806,81 +1806,7 @@ export default function Home() {
                     <span>Aktivasi Akses Penuh (Rp 199.000)</span>
                     <ArrowRight className="h-4 w-4" />
                   </a>
-
-                  {/* Trust Badges */}
-                  <div className="flex items-center justify-center gap-4 mt-4 text-[11px] text-slate-500">
-                    <span className="flex items-center gap-1">
-                      <Shield className="h-3 w-3 text-emerald-600" /> Garansi 7 Hari
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Clock className="h-3 w-3 text-blue-600" /> Aktivasi Instan
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Sparkles className="h-3 w-3 text-amber-600" /> Bebas Bot Abuse
-                    </span>
-                  </div>
                 </div>
-              </div>
-            </div>
-
-            {/* Sub-Section: Add-on Kuota Satuan Fleksibel */}
-            <div className="max-w-5xl mx-auto mt-14 bg-white rounded-3xl p-8 border border-zinc-200/80 text-left shadow-xs">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-zinc-100 pb-6 mb-6">
-                <div>
-                  <span className="text-[11px] font-bold text-[var(--color-brand-700)] uppercase tracking-wider">
-                    Sistem Top-Up Mikro Fleksibel
-                  </span>
-                  <h3 className="text-xl font-black text-slate-900 mt-1">
-                    Kuota Habis Saat Revisi? Beli Add-on Satuan Saja!
-                  </h3>
-                  <p className="text-xs text-slate-600 mt-1">
-                    Tak perlu upgrade paket baru atau bayar bulanan. Mahasiswa bebas top-up kuota spesifik fitur yang dibutuhkan mulai dari Rp 15.000.
-                  </p>
-                </div>
-                <span className="px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold shrink-0">
-                  Hemat & Ramah Kantong Mahasiswa
-                </span>
-              </div>
-
-              {/* Addons Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3.5">
-                {[
-                  { name: "Parafrase AI", amount: "+50x", price: "Rp 19.000", tag: "Terpopuler" },
-                  { name: "Bedah Draf & Asisten", amount: "+40x", price: "Rp 19.000" },
-                  { name: "Simulator Sidang", amount: "+5 Sesi", price: "Rp 29.000", tag: "Audio TTS" },
-                  { name: "SPSS & SmartPLS", amount: "+20x", price: "Rp 25.000" },
-                  { name: "Sitasi Jurnal APA", amount: "+50x", price: "Rp 15.000" },
-                  { name: "Judul Finder ACC", amount: "+25x", price: "Rp 15.000" },
-                  { name: "Script WA Dosen", amount: "+50x", price: "Rp 15.000" },
-                  { name: "Kompilasi Dokumen", amount: "+10x", price: "Rp 15.000" },
-                ].map((addon, idx) => (
-                  <div key={idx} className="bg-zinc-50/80 hover:bg-zinc-50 border border-zinc-200/80 rounded-2xl p-3.5 transition-all">
-                    <div className="flex items-center justify-between gap-1 mb-1">
-                      <span className="text-xs font-bold text-zinc-900 truncate">{addon.name}</span>
-                      {addon.tag && (
-                        <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-[var(--color-brand-100)] text-[var(--color-brand-700)] shrink-0">
-                          {addon.tag}
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-base font-extrabold text-[var(--color-brand-700)]">{addon.amount}</div>
-                    <div className="text-xs font-bold text-zinc-600 mt-1">{addon.price}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Money Back Guarantee Box */}
-            <div className="max-w-xl mx-auto mt-8 p-5 rounded-2xl border border-emerald-200 bg-emerald-50/70 flex items-start gap-3.5 text-left">
-              <div className="h-10 w-10 rounded-xl bg-emerald-100 flex items-center justify-center shrink-0 text-emerald-700">
-                <ShieldCheck className="h-5 w-5" />
-              </div>
-              <div>
-                <h4 className="font-bold text-sm text-emerald-900">Garansi Kepuasan Uang Kembali 100%</h4>
-                <p className="text-xs text-emerald-800 mt-0.5 leading-relaxed">
-                  Jika dalam 7 hari pertama platform BBR dirasa tidak membantu proses pengerjaan tugas akhirmu,
-                  cukup hubungi kami dan uangmu dikembalikan penuh tanpa syarat yang menyulitkan.
-                </p>
               </div>
             </div>
           </div>

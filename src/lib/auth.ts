@@ -8,11 +8,27 @@ export { ADMIN_EMAILS };
 /** @deprecated use ADMIN_EMAILS */
 export const VIP_EMAILS = ADMIN_EMAILS;
 
+const googleClientId = (
+  process.env.AUTH_GOOGLE_ID ||
+  process.env.GOOGLE_CLIENT_ID ||
+  process.env.GOOGLE_ID ||
+  ""
+).trim().replace(/^["']|["']$/g, "");
+
+const googleClientSecret = (
+  process.env.AUTH_GOOGLE_SECRET ||
+  process.env.GOOGLE_CLIENT_SECRET ||
+  process.env.GOOGLE_SECRET ||
+  ""
+).trim().replace(/^["']|["']$/g, "");
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
+  trustHost: true,
+  secret: (process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || "bbr-platform-super-secret-key-123").trim().replace(/^["']|["']$/g, ""),
   providers: [
     GoogleProvider({
-      clientId: process.env.AUTH_GOOGLE_ID!,
-      clientSecret: process.env.AUTH_GOOGLE_SECRET!,
+      clientId: googleClientId,
+      clientSecret: googleClientSecret,
     }),
   ],
   callbacks: {

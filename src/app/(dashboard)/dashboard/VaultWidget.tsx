@@ -1,11 +1,20 @@
-"use client";
-
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { FileText, Download, Clock, Sparkles, ArrowRight, CheckCircle2, FileEdit } from "lucide-react";
+import { FileText, Download, Clock, ArrowRight, CheckCircle2, FileEdit } from "lucide-react";
+import { generateThesisDocxBlob, ThesisMetadata, OutlineItem, CitationItem } from "@/lib/thesisDocxCompiler";
+
+interface CompiledDocInfo {
+  title: string;
+  timestamp: number;
+  chaptersCount?: number;
+  totalChapters?: number;
+  formatPreset?: string;
+  isVault?: boolean;
+  version?: number;
+}
 
 export default function VaultWidget() {
-  const [compiledDoc, setCompiledDoc] = useState<any>(null);
+  const [compiledDoc, setCompiledDoc] = useState<CompiledDocInfo | null>(null);
   const [jenjang, setJenjang] = useState<string>("S1");
 
   const getLabel = () => {
@@ -24,7 +33,7 @@ export default function VaultWidget() {
           const doc = JSON.parse(savedCompiled);
           setCompiledDoc(doc);
           return;
-        } catch (e) {}
+        } catch {}
       }
 
       // 2. Fallback to vault files if any
@@ -33,7 +42,7 @@ export default function VaultWidget() {
         try {
           const files = JSON.parse(savedVault);
           if (files && files.length > 0) {
-            files.sort((a: any, b: any) => b.timestamp - a.timestamp);
+            files.sort((a: { timestamp: number }, b: { timestamp: number }) => b.timestamp - a.timestamp);
             setCompiledDoc({
               title: files[0].name,
               timestamp: files[0].timestamp,
@@ -44,7 +53,7 @@ export default function VaultWidget() {
             });
             return;
           }
-        } catch (e) {}
+        } catch {}
       }
 
       setCompiledDoc(null);
@@ -67,9 +76,10 @@ export default function VaultWidget() {
     };
   }, []);
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     if (!compiledDoc) return;
-    const docTitle = compiledDoc.title ? (compiledDoc.title.endsWith('.doc') ? compiledDoc.title : `${compiledDoc.title.replace(/\.docx?$/, '')}.doc`) : `Draf_${label}_Lengkap_Compiled.doc`;
+    const cleanTitle = (compiledDoc.title || `Draf_${label}_Lengkap_Compiled`).replace(/\.docx?$/i, '').trim();
+    const docFileName = `${cleanTitle}.docx`;
     
     // Check if we have saved compiled content from workspace
     const savedContentsStr = localStorage.getItem("bbr_bab_contents");
@@ -78,73 +88,84 @@ export default function VaultWidget() {
       try { contents = JSON.parse(savedContentsStr); } catch {}
     }
 
-    let dynamicCitations: any[] = [];
+    let dynamicCitations: CitationItem[] = [];
     try {
       const storedCits = localStorage.getItem('bbr_citations');
       if (storedCits) dynamicCitations = JSON.parse(storedCits);
     } catch {}
 
-    const docHtml = `
-<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
-<head>
-  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-  <title>${docTitle}</title>
-  <!--[if gte mso 9]>
-  <xml>
-    <w:WordDocument>
-      <w:View>Print</w:View>
-      <w:Zoom>100</w:Zoom>
-      <w:DoNotOptimizeForBrowser/>
-    </w:WordDocument>
-  </xml>
-  <![endif]-->
-  <style>
-    @page Section1 {
-      size: 21.0cm 29.7cm; /* A4 */
-      margin: 4.0cm 3.0cm 3.0cm 4.0cm;
-      mso-header-margin: 2.0cm;
-      mso-footer-margin: 2.0cm;
-      mso-footer: f1;
-      mso-paper-source: 0;
-    }
-    div.Section1 { page: Section1; }
-    body { font-family: 'Times New Roman', serif; font-size: 12pt; line-height: 2.0; color: #000000; text-align: justify; }
-    p.MsoFooter { margin: 0; font-size: 10pt; font-family: 'Times New Roman', serif; text-align: right; }
-    h1 { font-family: 'Times New Roman', serif; font-size: 14pt; font-weight: bold; text-align: center; text-transform: uppercase; margin-bottom: 24pt; page-break-before: always; }
-    p { margin-top: 0; margin-bottom: 6pt; text-indent: 1.27cm; text-align: justify; line-height: 2.0; }
-  </style>
-</head>
-<body lang="ID">
-  <div class="Section1">
-    <div style="text-align: center; margin-top: 4cm; page-break-after: always;">
-      <h1 style="page-break-before: avoid; font-size: 16pt;">${docTitle.replace(/_/g, ' ').replace(/\.docx?$/, '')}</h1>
-      <p style="text-indent: 0; margin-bottom: 2cm; text-align: center;">TUGAS AKHIR / SKRIPSI</p>
-      <div style="margin-bottom: 3.5cm;"><strong>MAHASISWA TUGAS AKHIR</strong><br>NIM: 2026/BBR/TA</div>
-      <div>PROGRAM STUDI SARJANA<br>UNIVERSITAS INDONESIA<br>${new Date().getFullYear()}</div>
-    </div>
-    ${Object.entries(contents).map(([babId, text]) => `<div>${text}</div>`).join('')}
-    ${dynamicCitations.length > 0 ? `
-    <div style="page-break-before: always;">
-      <h1>DAFTAR PUSTAKA</h1>
-      ${dynamicCitations.map(c => `<p style="text-indent: -1.27cm; padding-left: 1.27cm; margin-bottom: 8pt;">${c.authors}. (${c.year}). <em>${c.title}</em>. ${c.journal}.${c.doi ? ` https://doi.org/${c.doi}` : ''}</p>`).join('')}
-    </div>` : ''}
-  </div>
-  <div style='mso-element:footer' id='f1'>
-    <p class='MsoFooter'><span style='mso-field-code: " PAGE "'></span></p>
-  </div>
-</body>
-</html>
-    `;
+    let savedMetadata: ThesisMetadata | undefined;
+    try {
+      const mStr = localStorage.getItem('bbr_doc_metadata');
+      if (mStr) savedMetadata = JSON.parse(mStr);
+    } catch {}
 
-    const blob = new Blob(['\ufeff' + docHtml], { type: "application/msword;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = docTitle;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    let outline: OutlineItem[] = [];
+    try {
+      const outlineStr = localStorage.getItem('bbr_outline');
+      if (outlineStr) outline = JSON.parse(outlineStr);
+    } catch {}
+
+    if (!outline || outline.length === 0) {
+      outline = [
+        { id: '1', title: 'BAB I PENDAHULUAN', children: [{ id: '1-1', title: '1.1 Latar Belakang' }] },
+        { id: '2', title: 'BAB II TINJAUAN PUSTAKA', children: [{ id: '2-1', title: '2.1 Landasan Teori' }] },
+        { id: '3', title: 'BAB III METODE PENELITIAN', children: [{ id: '3-1', title: '3.1 Desain Penelitian' }] },
+        { id: '4', title: 'BAB IV HASIL DAN PEMBAHASAN', children: [{ id: '4-1', title: '4.1 Hasil Penelitian' }] },
+        { id: '5', title: 'BAB V PENUTUP', children: [{ id: '5-1', title: '5.1 Kesimpulan' }] },
+      ];
+    }
+
+    try {
+      const blob = await generateThesisDocxBlob({
+        metadata: savedMetadata || {
+          judul: cleanTitle.replace(/_/g, ' '),
+          subJudul: label === 'Tesis' ? 'TESIS' : label === 'Disertasi' ? 'DISERTASI' : 'TUGAS AKHIR',
+          namaPenulis: 'Mahasiswa Tugas Akhir',
+          nim: '2026/BBR/TA',
+          programStudi: `Program Studi ${label}`,
+          jurusan: 'Program Studi Terkait',
+          fakultas: 'Fakultas Terkait',
+          universitas: 'Universitas Brawijaya',
+          kota: 'Malang',
+          tahun: new Date().getFullYear().toString(),
+        },
+        outline,
+        contents,
+        citations: dynamicCitations,
+        format: {
+          marginTop: '4',
+          marginBottom: '3',
+          marginLeft: '4',
+          marginRight: '3',
+          fontFamily: 'Times New Roman',
+          fontSize: '12',
+          lineSpacing: '1.5',
+          includeToC: true,
+          includeBibliography: true,
+        },
+        includeCover: true,
+        includePengesahan: true,
+        includeToC: true,
+        includeDaftarGambar: true,
+        includeDaftarSingkatan: true,
+        includeDaftarTabel: true,
+        includeAbstrak: true,
+        includeBibliography: true,
+        includeLampiran: true,
+      });
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = docFileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error("Gagal mengunduh berkas Word DOCX:", e);
+    }
   };
 
   if (!compiledDoc) {

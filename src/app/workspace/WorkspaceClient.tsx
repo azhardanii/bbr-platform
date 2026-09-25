@@ -16,6 +16,7 @@ import AIAssistantPopup from '@/components/editor/AIAssistantPopup';
 import CommentThread from '@/components/editor/CommentThread';
 import { checkFeatureQuota, consumeFeatureQuota, FeatureKey } from '@/lib/quota';
 import QuotaModal from '@/components/quota/QuotaModal';
+import { generateThesisDocxBlob, ThesisMetadata, CitationItem } from '@/lib/thesisDocxCompiler';
 
 export interface OutlineItem {
   id: string;
@@ -132,8 +133,32 @@ function numToRoman(num: number): string {
   return roman[num - 1] || String(num);
 }
 
-function generateId() {
-  return `bab-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function generateId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
+function normalizeOutlineUUIDs(items: OutlineItem[]): { normalized: OutlineItem[]; idMap: Record<string, string> } {
+  const idMap: Record<string, string> = {};
+  const normalized = items.map((bab) => {
+    const newBabId = UUID_REGEX.test(bab.id) ? bab.id : generateId();
+    if (newBabId !== bab.id) idMap[bab.id] = newBabId;
+    const newChildren = bab.children?.map((sub) => {
+      const newSubId = UUID_REGEX.test(sub.id) ? sub.id : generateId();
+      if (newSubId !== sub.id) idMap[sub.id] = newSubId;
+      return { ...sub, id: newSubId };
+    });
+    return { ...bab, id: newBabId, children: newChildren };
+  });
+  return { normalized, idMap };
 }
 
 // --- Format Document Settings Interface ---
@@ -354,24 +379,99 @@ function FormatModal({ onClose, format, onSaveFormat }: { onClose: () => void; f
 }
 
 // --- Compilation Modal ---
+// --- Comprehensive Academic Thesis Compilation Modal ---
 function CompilationModal({ 
   onClose, 
   outline, 
   uploads, 
-  contents,
-  format,
+  contents, 
+  format, 
   onCompiledSuccess 
 }: { 
   onClose: () => void; 
   outline: OutlineItem[]; 
   uploads: Record<string, UploadedBab>; 
-  contents: Record<string, string>;
-  format: DocFormat;
-  onCompiledSuccess: () => void;
+  contents: Record<string, string>; 
+  format: DocFormat; 
+  onCompiledSuccess: () => void; 
 }) {
+  const { data: session } = useSession();
+  const userId = session?.user?.id || 'default';
+
+  const [activeTab, setActiveTab] = useState<'kelengkapan' | 'identitas' | 'kaidah'>('kelengkapan');
   const [compiling, setCompiling] = useState(false);
   const [compiled, setCompiled] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Initialize title
   const [customTitle, setCustomTitle] = useState('Naskah_Tugas_Akhir_Lengkap');
+
+  // Metadata State for Cover, Pengesahan & Abstrak
+  const [metadata, setMetadata] = useState<ThesisMetadata>(() => {
+    const defaultMeta: ThesisMetadata = {
+      judul: 'Aktivitas Antifungi Fraksi Etil Asetat Ekstrak Daun Putri Malu (Mimosa pudica) Terhadap Candida albicans Secara In Vitro',
+      subJudul: 'TUGAS AKHIR',
+      keperluanGelar: 'Untuk Memenuhi Persyaratan Memperoleh Gelar Sarjana Farmasi',
+      namaPenulis: 'Krisno Adi Putra',
+      nim: '145070500111013',
+      programStudi: 'Program Studi Sarjana Farmasi',
+      jurusan: 'Jurusan Farmasi',
+      fakultas: 'Fakultas Kedokteran',
+      universitas: 'Universitas Brawijaya',
+      kota: 'Malang',
+      tahun: new Date().getFullYear().toString(),
+      hariUjian: 'Rabu',
+      tanggalUjian: '16 Desember 2024',
+      penguji1: 'apt. Uswatun Khasanah, S.Farm., M.Farm.',
+      nikPenguji1: '2011068512222001',
+      pembimbing1: 'Prof. apt. Sri Winarsih, Dr., M.Si., Dra.',
+      nipPembimbing1: '195408231981032001',
+      pembimbing2: 'apt. Oktavia Rahayu A., S.Farm., M.Biomed.',
+      nipPembimbing2: '2016099210192001',
+      ketuaProdi: 'apt. Alvan Febrian Shalas, S.Farm., M.Farm.',
+      nipKetuaProdi: '198502182019031007',
+      kataKunciId: 'Candida albicans, fraksi etil asetat, metode difusi cakram, Mimosa pudica',
+      kataKunciEn: 'Candida albicans, ethyl acetate fraction, disc diffusion method, Mimosa pudica',
+    };
+
+    if (typeof window !== 'undefined') {
+      try {
+        const ob = localStorage.getItem(`bbr_${userId}_onboarding`) || localStorage.getItem('bbr_onboarding');
+        if (ob) {
+          const parsed = JSON.parse(ob);
+          if (parsed.judulSkripsi) defaultMeta.judul = parsed.judulSkripsi;
+          if (parsed.namaLengkap) defaultMeta.namaPenulis = parsed.namaLengkap;
+          if (parsed.universitas) defaultMeta.universitas = parsed.universitas;
+          if (parsed.jurusan) {
+            defaultMeta.jurusan = parsed.jurusan;
+            defaultMeta.programStudi = `Program Studi ${parsed.jenjang === 'S2' ? 'Magister' : parsed.jenjang === 'S3' ? 'Doktor' : 'Sarjana'} ${parsed.jurusan}`;
+          }
+          if (parsed.jenjang) {
+            defaultMeta.subJudul = parsed.jenjang === 'S2' ? 'TESIS' : parsed.jenjang === 'S3' ? 'DISERTASI' : 'TUGAS AKHIR';
+            defaultMeta.keperluanGelar = `Untuk Memenuhi Persyaratan Memperoleh Gelar ${parsed.jenjang === 'S2' ? 'Magister' : parsed.jenjang === 'S3' ? 'Doktor' : 'Sarjana'}`;
+          }
+        }
+        const savedMeta = localStorage.getItem('bbr_doc_metadata');
+        if (savedMeta) {
+          return { ...defaultMeta, ...JSON.parse(savedMeta) };
+        }
+      } catch {}
+    }
+    return defaultMeta;
+  });
+
+  // Section Toggles corresponding to University Standards (from reference)
+  const [sectionsConfig, setSectionsConfig] = useState({
+    includeCover: true,
+    includePengesahan: true,
+    includeToC: true,
+    includeDaftarGambar: true,
+    includeDaftarSingkatan: true,
+    includeDaftarTabel: true,
+    includeAbstrak: true,
+    includeBibliography: true,
+    includeLampiran: true,
+  });
 
   const filledCount = outline.filter(b => {
     const up = uploads[b.id];
@@ -380,28 +480,17 @@ function CompilationModal({
   }).length;
   const totalBabs = outline.length;
 
-  const handleStartCompile = () => {
+  const handleStartCompile = async () => {
     consumeFeatureQuota('kompilasi');
     setCompiling(true);
-    setTimeout(() => {
-      setCompiling(false);
-      setCompiled(true);
+    setErrorMessage(null);
 
-      const fileName = customTitle.endsWith('.doc') ? customTitle : customTitle.endsWith('.docx') ? customTitle.replace('.docx', '.doc') : `${customTitle}.doc`;
+    try {
+      const cleanTitle = customTitle.replace(/\.docx?$/i, '').trim() || 'Naskah_Tugas_Akhir_Lengkap';
+      const fileName = `${cleanTitle}.docx`;
 
-      // Save compiled document record for dashboard vault
-      const record = {
-        title: fileName,
-        timestamp: Date.now(),
-        chaptersCount: filledCount,
-        totalChapters: totalBabs,
-        formatPreset: `${format.fontFamily} ${format.fontSize}pt · Spasi ${format.lineSpacing} · Margin ${format.marginTop}-${format.marginBottom}-${format.marginLeft}-${format.marginRight}cm`,
-      };
-      localStorage.setItem('bbr_compiled_doc', JSON.stringify(record));
-      window.dispatchEvent(new Event('bbr-compiled-updated'));
-
-      // Retrieve dynamic citations & format config from localStorage
-      let dynamicCitations: any[] = [];
+      // 1. Retrieve dynamic citations from localStorage
+      let dynamicCitations: CitationItem[] = [];
       try {
         const storedCits = localStorage.getItem('bbr_citations');
         if (storedCits) dynamicCitations = JSON.parse(storedCits);
@@ -410,262 +499,64 @@ function CompilationModal({
       if (dynamicCitations.length === 0) {
         dynamicCitations = [
           {
-            authors: 'Creswell, J. W., & Creswell, J. D.',
-            year: '2018',
-            title: 'Research Design: Qualitative, Quantitative, and Mixed Methods Approaches (5th ed.)',
-            journal: 'SAGE Publications',
+            authors: 'Bates, S., & Rosa, J. M.',
+            year: '2007',
+            title: 'Candida albicans Iff11, A secreted protein required for cell wall structure and virulence',
+            journal: 'Journal of Infection and Immunity, 75(6), 2922-2928',
           },
           {
-            authors: 'Sugiyono',
-            year: '2021',
-            title: 'Metode Penelitian Kuantitatif, Kualitatif, dan R&D',
-            journal: 'Alfabeta Bandung',
+            authors: 'Ditjen POM',
+            year: '2000',
+            title: 'Parameter Standar Umum Ekstrak Tumbuhan Obat',
+            journal: 'Departemen Kesehatan Republik Indonesia, Jakarta',
           },
           {
-            authors: 'Nielsen, J., & Kurniawan, S.',
-            year: '2021',
-            title: 'User Interface Design Guidelines for Elderly Users in E-Commerce Platforms',
-            journal: 'International Journal of Human-Computer Studies',
-            doi: '10.1016/j.ijhcs.2021.102688',
-          }
+            authors: 'Jawetz, E., Melnick, J. L., & Adelberg, E. A.',
+            year: '1995',
+            title: 'Mikrobiologi Kedokteran (Hal: 627-629)',
+            journal: 'EGC Penerbit Buku Kedokteran, Jakarta',
+          },
+          {
+            authors: 'Muhammad, G., Hussain, M. A., Jantan, I., & Bukhari, S. N.',
+            year: '2016',
+            title: 'Mimosa pudica L., a high-value medicinal plant as a source of bioactives for pharmaceuticals',
+            journal: 'Comprehensive Reviews in Food Science and Food Safety, 15(2), 303-315',
+            doi: '10.1111/1541-4337.12184',
+          },
         ];
       }
 
-      // Generate Authentic Word-Compliant HTML Document with standard Academic Styles & Native Word Page Numbering
-      const lineSpacingCss = format.lineSpacing === '2' ? '2.0' : format.lineSpacing === '1.5' ? '1.5' : '1.15';
-      
-      const docHtml = `
-<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
-<head>
-  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-  <title>${fileName}</title>
-  <!--[if gte mso 9]>
-  <xml>
-    <w:WordDocument>
-      <w:View>Print</w:View>
-      <w:Zoom>100</w:Zoom>
-      <w:DoNotOptimizeForBrowser/>
-    </w:WordDocument>
-  </xml>
-  <![endif]-->
-  <style>
-    @page Section1 {
-      size: 21.0cm 29.7cm; /* A4 */
-      margin: ${format.marginTop}cm ${format.marginRight}cm ${format.marginBottom}cm ${format.marginLeft}cm;
-      mso-header-margin: 2.0cm;
-      mso-footer-margin: 2.0cm;
-      mso-footer: f1;
-      mso-paper-source: 0;
-    }
-    div.Section1 {
-      page: Section1;
-    }
-    body {
-      font-family: '${format.fontFamily}', 'Times New Roman', serif;
-      font-size: ${format.fontSize}pt;
-      line-height: ${lineSpacingCss};
-      color: #000000;
-      text-align: justify;
-    }
-    p.MsoFooter, li.MsoFooter, div.MsoFooter {
-      margin: 0;
-      margin-bottom: 0.0001pt;
-      mso-pagination: widow-orphan;
-      font-size: 10.0pt;
-      font-family: '${format.fontFamily}', 'Times New Roman', serif;
-      text-align: right;
-    }
-    h1.chapter-title {
-      font-family: '${format.fontFamily}', 'Times New Roman', serif;
-      font-size: 14pt;
-      font-weight: bold;
-      text-align: center;
-      text-transform: uppercase;
-      margin-top: 0;
-      margin-bottom: 24pt;
-      page-break-before: always;
-    }
-    h2.sub-title {
-      font-family: '${format.fontFamily}', 'Times New Roman', serif;
-      font-size: 12pt;
-      font-weight: bold;
-      margin-top: 18pt;
-      margin-bottom: 6pt;
-    }
-    h3.sub-sub-title {
-      font-family: '${format.fontFamily}', 'Times New Roman', serif;
-      font-size: 12pt;
-      font-weight: bold;
-      font-style: italic;
-      margin-top: 12pt;
-      margin-bottom: 6pt;
-    }
-    p {
-      margin-top: 0;
-      margin-bottom: 6pt;
-      text-indent: 1.27cm; /* Standar First Line Indent Indonesia 1.27cm */
-      text-align: justify;
-      line-height: ${lineSpacingCss};
-    }
-    .cover-page {
-      text-align: center;
-      margin-top: 4cm;
-      page-break-after: always;
-    }
-    .cover-title {
-      font-size: 16pt;
-      font-weight: bold;
-      text-transform: uppercase;
-      margin-bottom: 2.5cm;
-    }
-    .cover-author {
-      font-size: 12pt;
-      font-weight: bold;
-      margin-bottom: 3.5cm;
-    }
-    .cover-footer {
-      font-size: 12pt;
-      font-weight: bold;
-      text-transform: uppercase;
-    }
-    .toc-container {
-      page-break-after: always;
-    }
-    .toc-title {
-      font-size: 14pt;
-      font-weight: bold;
-      text-align: center;
-      margin-bottom: 20pt;
-    }
-    table.toc-table {
-      width: 100%;
-      border-collapse: collapse;
-      border: none !important;
-      mso-border-alt: none !important;
-      mso-border-top-alt: none !important;
-      mso-border-bottom-alt: none !important;
-      mso-border-left-alt: none !important;
-      mso-border-right-alt: none !important;
-      font-size: 12pt;
-      margin-top: 10pt;
-    }
-    table.toc-table tr, table.toc-table td {
-      border: none !important;
-      mso-border-alt: none !important;
-      mso-border-top-alt: none !important;
-      mso-border-bottom-alt: none !important;
-      mso-border-left-alt: none !important;
-      mso-border-right-alt: none !important;
-      padding: 3pt 0;
-      vertical-align: bottom;
-    }
-    .toc-title {
-      font-family: '${format.fontFamily}', 'Times New Roman', serif;
-      font-size: 14pt;
-      font-weight: bold;
-      text-align: center;
-      margin-bottom: 24pt;
-    }
-    .bib-item {
-      text-indent: -1.27cm;
-      padding-left: 1.27cm;
-      margin-bottom: 10pt;
-      text-align: justify;
-    }
-  </style>
-</head>
-<body lang="ID">
-  <div class="Section1">
-    <!-- HALAMAN JUDUL (COVER) -->
-    <div class="cover-page">
-      <div class="cover-title">
-        ${customTitle.replace(/_/g, ' ')}
-      </div>
-      <p style="text-indent: 0; margin-bottom: 2cm; font-size: 12pt; text-align: center;">
-        TUGAS AKHIR / SKRIPSI<br>
-        <em>Diajukan untuk Memenuhi Sebagian Persyaratan Mencapai Gelar Sarjana</em>
-      </p>
-      <div class="cover-author">
-        Disusun Oleh:<br>
-        <strong>MAHASISWA TUGAS AKHIR</strong><br>
-        NIM: 2026/BBR/TA
-      </div>
-      <div class="cover-footer">
-        PROGRAM STUDI SARJANA<br>
-        UNIVERSITAS INDONESIA<br>
-        ${new Date().getFullYear()}
-      </div>
-    </div>
+      // 2. Generate Real DOCX Blob with Academic Standard Pagination & Structure
+      const blob = await generateThesisDocxBlob({
+        metadata,
+        outline,
+        contents,
+        citations: dynamicCitations,
+        format,
+        includeCover: sectionsConfig.includeCover,
+        includePengesahan: sectionsConfig.includePengesahan,
+        includeToC: sectionsConfig.includeToC,
+        includeDaftarGambar: sectionsConfig.includeDaftarGambar,
+        includeDaftarTabel: sectionsConfig.includeDaftarTabel,
+        includeDaftarSingkatan: sectionsConfig.includeDaftarSingkatan,
+        includeAbstrak: sectionsConfig.includeAbstrak,
+        includeBibliography: sectionsConfig.includeBibliography,
+        includeLampiran: sectionsConfig.includeLampiran,
+      });
 
-    ${format.includeToC ? `
-    <!-- DAFTAR ISI OTOMATIS (TANPA BORDER / ZERO BORDER) -->
-    <div class="toc-container">
-      <div class="toc-title">DAFTAR ISI</div>
-      <table class="toc-table" border="0" cellpadding="0" cellspacing="0" style="width:100%; border:none; border-collapse:collapse; mso-border-alt:none;">
-        ${outline.map((b, idx) => `
-          <tr style="border:none; mso-border-alt:none;">
-            <td style="border:none; mso-border-alt:none; font-weight:bold; padding-top:6pt; padding-bottom:2pt;">${b.title}</td>
-            <td style="border:none; mso-border-alt:none; text-align:right; font-weight:bold; padding-top:6pt; padding-bottom:2pt; white-space:nowrap;">${idx + 1}</td>
-          </tr>
-          ${b.children ? b.children.map(sub => `
-            <tr style="border:none; mso-border-alt:none;">
-              <td style="border:none; mso-border-alt:none; padding-left:24pt; padding-top:2pt; padding-bottom:2pt;">${sub.title}</td>
-              <td style="border:none; mso-border-alt:none; text-align:right; padding-top:2pt; padding-bottom:2pt; white-space:nowrap;">${idx + 1}</td>
-            </tr>
-          `).join('') : ''}
-        `).join('')}
-        ${format.includeBibliography ? `
-          <tr style="border:none; mso-border-alt:none;">
-            <td style="border:none; mso-border-alt:none; font-weight:bold; padding-top:10pt; padding-bottom:2pt;">DAFTAR PUSTAKA</td>
-            <td style="border:none; mso-border-alt:none; text-align:right; font-weight:bold; padding-top:10pt; padding-bottom:2pt; white-space:nowrap;">${outline.length + 1}</td>
-          </tr>
-        ` : ''}
-      </table>
-    </div>
-    ` : ''}
+      // 3. Save Record and Metadata in localStorage
+      const record = {
+        title: fileName,
+        timestamp: Date.now(),
+        chaptersCount: filledCount,
+        totalChapters: totalBabs,
+        formatPreset: `${format.fontFamily} ${format.fontSize}pt · Spasi ${format.lineSpacing} · Margin ${format.marginTop}-${format.marginBottom}-${format.marginLeft}-${format.marginRight}cm`,
+      };
+      localStorage.setItem('bbr_compiled_doc', JSON.stringify(record));
+      localStorage.setItem('bbr_doc_metadata', JSON.stringify(metadata));
+      window.dispatchEvent(new Event('bbr-compiled-updated'));
 
-    <!-- ISI SETIAP BAB -->
-    ${outline.map((b) => {
-      const rawContent = contents[b.id] || '';
-      const hasHtml = rawContent.trim().length > 0;
-      return `
-        <div class="chapter-container">
-          <h1 class="chapter-title">${b.title}</h1>
-          ${hasHtml ? rawContent : `
-            ${b.children ? b.children.map(sub => `
-              <h2 class="sub-title">${sub.title}</h2>
-              <p>Draf penulisan naskah untuk bagian ${sub.title} dituliskan pada bagian ini.</p>
-            `).join('') : '<p>Draf penulisan naskah bab ini belum diisi.</p>'}
-          `}
-        </div>
-      `;
-    }).join('')}
-
-    ${format.includeBibliography ? `
-    <!-- DAFTAR PUSTAKA -->
-    <div style="page-break-before: always;">
-      <h1 class="chapter-title">DAFTAR PUSTAKA</h1>
-      ${dynamicCitations.map(c => `
-        <p class="bib-item">
-          ${c.authors}. (${c.year}). <em>${c.title}</em>. ${c.journal}.${c.doi ? ` https://doi.org/${c.doi}` : c.url ? ` ${c.url}` : ''}
-        </p>
-      `).join('')}
-    </div>
-    ` : ''}
-  </div>
-
-  <!-- Word Native Footer XML (Automatically Evaluated as Real Page Number in Word) -->
-  <div style='mso-element:footer' id='f1'>
-    <p class='MsoFooter'>
-      <span style='mso-field-code: " PAGE "'></span>
-    </p>
-  </div>
-</body>
-</html>
-      `;
-
-      // Download file with proper Word MIME type
-      const blob = new Blob(['\ufeff' + docHtml], { type: 'application/msword;charset=utf-8' });
+      // 4. Trigger Instant Native Browser Download of .docx
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -675,140 +566,458 @@ function CompilationModal({
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
 
+      setCompiling(false);
+      setCompiled(true);
       onCompiledSuccess();
-    }, 1200);
+    } catch (err: any) {
+      console.error('[CompilationModal] Gagal mengompilasi DOCX:', err);
+      setErrorMessage(err?.message || 'Terjadi kesalahan saat membuat berkas Word. Silakan coba kembali.');
+      setCompiling(false);
+    }
   };
 
   return (
     <div className="fixed inset-0 z-[600] flex items-center justify-center p-4" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-xs animate-in fade-in duration-200" />
-      <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-lg border border-zinc-200 overflow-hidden animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-6 py-5 border-b border-zinc-100 bg-zinc-50/50">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-xs animate-in fade-in duration-200" />
+      <div 
+        className="relative bg-white rounded-3xl shadow-2xl w-full max-w-2xl border border-zinc-200 overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]" 
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-5 border-b border-zinc-100 bg-zinc-50/70">
           <div>
             <h2 className="font-bold text-lg text-zinc-900 flex items-center gap-2">
-              <Download size={18} className="text-[var(--color-brand-600)]" />
-              Kompilasi Naskah Tugas Akhir
+              <Download size={20} className="text-[var(--color-brand-600)]" />
+              Kompilasi Dokumen Standar Kampus (.docx)
             </h2>
-            <p className="text-xs text-zinc-500 mt-0.5">Gabungkan seluruh bab draf menjadi satu berkas Word (.docx) siap sidang.</p>
+            <p className="text-xs text-zinc-500 mt-0.5">
+              Menghasilkan berkas Word resmi berstandar universitas lengkap dengan nomor halaman & daftar isi akurat.
+            </p>
           </div>
-          <button onClick={onClose} className="p-2 text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100 rounded-xl transition-colors">
+          <button onClick={onClose} className="p-2 text-zinc-400 hover:text-zinc-600 hover:bg-zinc-200/50 rounded-xl transition-colors">
             <X size={18} />
           </button>
         </div>
 
-        <div className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+        {/* Tab Navigation */}
+        {!compiled && (
+          <div className="flex items-center border-b border-zinc-200 px-6 bg-zinc-50/30 text-xs font-semibold gap-1">
+            <button
+              onClick={() => setActiveTab('kelengkapan')}
+              className={`py-3 px-3.5 border-b-2 transition-all flex items-center gap-2 ${
+                activeTab === 'kelengkapan'
+                  ? 'border-[var(--color-brand-600)] text-[var(--color-brand-700)] font-bold'
+                  : 'border-transparent text-zinc-500 hover:text-zinc-800'
+              }`}
+            >
+              <FileCheck size={15} /> Kelengkapan Bagian ({filledCount}/{totalBabs} Bab)
+            </button>
+            <button
+              onClick={() => setActiveTab('identitas')}
+              className={`py-3 px-3.5 border-b-2 transition-all flex items-center gap-2 ${
+                activeTab === 'identitas'
+                  ? 'border-[var(--color-brand-600)] text-[var(--color-brand-700)] font-bold'
+                  : 'border-transparent text-zinc-500 hover:text-zinc-800'
+              }`}
+            >
+              <ShieldCheck size={15} /> Identitas & Lembar Pengesahan
+            </button>
+            <button
+              onClick={() => setActiveTab('kaidah')}
+              className={`py-3 px-3.5 border-b-2 transition-all flex items-center gap-2 ${
+                activeTab === 'kaidah'
+                  ? 'border-[var(--color-brand-600)] text-[var(--color-brand-700)] font-bold'
+                  : 'border-transparent text-zinc-500 hover:text-zinc-800'
+              }`}
+            >
+              <SlidersHorizontal size={15} /> Kaidah Nomor Halaman
+            </button>
+          </div>
+        )}
+
+        {/* Modal Body */}
+        <div className="p-6 space-y-5 overflow-y-auto flex-1">
+          {errorMessage && (
+            <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl flex items-center gap-2">
+              <span className="font-bold">Error:</span> {errorMessage}
+            </div>
+          )}
+
           {!compiled ? (
             <>
-              {/* Document Name */}
-              <div>
-                <label className="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-1.5 block">
-                  Nama File Hasil Kompilasi
-                </label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={customTitle}
-                    onChange={e => setCustomTitle(e.target.value)}
-                    className="w-full px-3.5 py-2.5 border-2 border-zinc-200 rounded-xl text-xs font-semibold focus:border-[var(--color-brand-600)] outline-none"
-                  />
-                  <span className="text-xs font-bold text-zinc-400 bg-zinc-100 px-3 py-2.5 rounded-xl border border-zinc-200">.docx</span>
-                </div>
-              </div>
+              {/* TAB 1: KELENGKAPAN BAGIAN NASKAH */}
+              {activeTab === 'kelengkapan' && (
+                <div className="space-y-4">
+                  {/* Nama File */}
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wider text-zinc-500 mb-1.5 block">
+                      Nama Berkas Word (.docx)
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={customTitle}
+                        onChange={e => setCustomTitle(e.target.value)}
+                        className="w-full px-3.5 py-2.5 border-2 border-zinc-200 rounded-xl text-xs font-semibold focus:border-[var(--color-brand-600)] outline-none"
+                        placeholder="Contoh: Naskah_Tugas_Akhir_Lengkap"
+                      />
+                      <span className="text-xs font-bold text-zinc-500 bg-zinc-100 px-3 py-2.5 rounded-xl border border-zinc-200 shrink-0">
+                        .docx
+                      </span>
+                    </div>
+                  </div>
 
-              {/* Chapters Checklist */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-bold uppercase tracking-wider text-zinc-400">
-                    Bab yang Akan Digabung ({filledCount}/{totalBabs})
-                  </span>
-                  <span className="text-[11px] text-zinc-500 font-semibold">
-                    {filledCount === totalBabs ? '✅ Lengkap Semua Bab' : 'ℹ️ Bab kosong akan dibuatkan struktur bab'}
-                  </span>
-                </div>
-                <div className="max-h-44 overflow-y-auto space-y-1.5 border border-zinc-200 rounded-2xl p-2.5 bg-zinc-50">
-                  {outline.map((b) => {
-                    const up = uploads[b.id];
-                    const text = contents[b.id] || '';
-                    const words = getWordCount(text);
-                    const isFilled = !!up || words > 0;
+                  {/* Section Checklist sesuai Referensi */}
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wider text-zinc-500 mb-2 block">
+                      Bagian Awal & Akhir Standar Skripsi (Sesuai Format Referensi)
+                    </label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 bg-zinc-50 border border-zinc-200 rounded-2xl p-3.5 text-xs">
+                      <label className="flex items-center gap-2 cursor-pointer select-none text-zinc-700 font-medium">
+                        <input
+                          type="checkbox"
+                          checked={sectionsConfig.includeCover}
+                          onChange={e => setSectionsConfig({ ...sectionsConfig, includeCover: e.target.checked })}
+                          className="rounded text-[var(--color-brand-600)] focus:ring-[var(--color-brand-600)]"
+                        />
+                        <span>Halaman Judul / Cover</span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer select-none text-zinc-700 font-medium">
+                        <input
+                          type="checkbox"
+                          checked={sectionsConfig.includePengesahan}
+                          onChange={e => setSectionsConfig({ ...sectionsConfig, includePengesahan: e.target.checked })}
+                          className="rounded text-[var(--color-brand-600)] focus:ring-[var(--color-brand-600)]"
+                        />
+                        <span>Halaman Pengesahan (Penguji & Pembimbing)</span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer select-none text-zinc-700 font-medium">
+                        <input
+                          type="checkbox"
+                          checked={sectionsConfig.includeToC}
+                          onChange={e => setSectionsConfig({ ...sectionsConfig, includeToC: e.target.checked })}
+                          className="rounded text-[var(--color-brand-600)] focus:ring-[var(--color-brand-600)]"
+                        />
+                        <span>Daftar Isi Otomatis (Titik & Nomor Akurat)</span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer select-none text-zinc-700 font-medium">
+                        <input
+                          type="checkbox"
+                          checked={sectionsConfig.includeDaftarGambar}
+                          onChange={e => setSectionsConfig({ ...sectionsConfig, includeDaftarGambar: e.target.checked })}
+                          className="rounded text-[var(--color-brand-600)] focus:ring-[var(--color-brand-600)]"
+                        />
+                        <span>Daftar Gambar</span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer select-none text-zinc-700 font-medium">
+                        <input
+                          type="checkbox"
+                          checked={sectionsConfig.includeDaftarSingkatan}
+                          onChange={e => setSectionsConfig({ ...sectionsConfig, includeDaftarSingkatan: e.target.checked })}
+                          className="rounded text-[var(--color-brand-600)] focus:ring-[var(--color-brand-600)]"
+                        />
+                        <span>Daftar Singkatan (Glosarium)</span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer select-none text-zinc-700 font-medium">
+                        <input
+                          type="checkbox"
+                          checked={sectionsConfig.includeDaftarTabel}
+                          onChange={e => setSectionsConfig({ ...sectionsConfig, includeDaftarTabel: e.target.checked })}
+                          className="rounded text-[var(--color-brand-600)] focus:ring-[var(--color-brand-600)]"
+                        />
+                        <span>Daftar Tabel</span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer select-none text-zinc-700 font-medium">
+                        <input
+                          type="checkbox"
+                          checked={sectionsConfig.includeAbstrak}
+                          onChange={e => setSectionsConfig({ ...sectionsConfig, includeAbstrak: e.target.checked })}
+                          className="rounded text-[var(--color-brand-600)] focus:ring-[var(--color-brand-600)]"
+                        />
+                        <span>Abstrak (ID) & Abstract (EN)</span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer select-none text-zinc-700 font-medium">
+                        <input
+                          type="checkbox"
+                          checked={sectionsConfig.includeBibliography}
+                          onChange={e => setSectionsConfig({ ...sectionsConfig, includeBibliography: e.target.checked })}
+                          className="rounded text-[var(--color-brand-600)] focus:ring-[var(--color-brand-600)]"
+                        />
+                        <span>Daftar Pustaka (Standar APA)</span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer select-none text-zinc-700 font-medium">
+                        <input
+                          type="checkbox"
+                          checked={sectionsConfig.includeLampiran}
+                          onChange={e => setSectionsConfig({ ...sectionsConfig, includeLampiran: e.target.checked })}
+                          className="rounded text-[var(--color-brand-600)] focus:ring-[var(--color-brand-600)]"
+                        />
+                        <span>Lampiran Dokumentasi & Data</span>
+                      </label>
+                    </div>
+                  </div>
 
-                    return (
-                      <div key={b.id} className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-zinc-100 text-xs">
-                        <div className="flex items-center gap-2 truncate">
-                          {isFilled ? (
-                            <FileCheck size={15} className="text-emerald-600 shrink-0" />
-                          ) : (
-                            <FileIcon size={15} className="text-zinc-400 shrink-0" />
-                          )}
-                          <span className="font-semibold text-zinc-800 truncate">{b.title}</span>
-                        </div>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md shrink-0 ${
-                          up 
-                            ? 'bg-emerald-50 text-emerald-700' 
-                            : words > 0 
-                            ? 'bg-blue-50 text-blue-700'
-                            : 'bg-zinc-100 text-zinc-500'
-                        }`}>
-                          {up ? `Berkas (${words} kata)` : words > 0 ? `${words} kata` : 'Draf Kosong'}
-                        </span>
+                  {/* Daftar Bab yang Digabungkan */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-bold uppercase tracking-wider text-zinc-500">
+                        Bab Naskah yang Digabung ({filledCount}/{totalBabs})
+                      </span>
+                      <span className="text-[11px] text-zinc-500 font-semibold">
+                        {filledCount === totalBabs ? '✅ Seluruh Bab Terisi' : 'ℹ️ Bab kosong akan dibuatkan template sub-bab'}
+                      </span>
+                    </div>
+                    <div className="max-h-40 overflow-y-auto space-y-1.5 border border-zinc-200 rounded-2xl p-2.5 bg-zinc-50">
+                      {outline.map((b) => {
+                        const up = uploads[b.id];
+                        const text = contents[b.id] || '';
+                        const words = getWordCount(text);
+                        const isFilled = !!up || words > 0;
+
+                        return (
+                          <div key={b.id} className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-zinc-100 text-xs">
+                            <div className="flex items-center gap-2 truncate">
+                              {isFilled ? (
+                                <FileCheck size={15} className="text-emerald-600 shrink-0" />
+                              ) : (
+                                <FileIcon size={15} className="text-zinc-400 shrink-0" />
+                              )}
+                              <span className="font-semibold text-zinc-800 truncate">{b.title}</span>
+                            </div>
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md shrink-0 ${
+                              up 
+                                ? 'bg-emerald-50 text-emerald-700' 
+                                : words > 0 
+                                ? 'bg-blue-50 text-blue-700'
+                                : 'bg-zinc-100 text-zinc-500'
+                            }`}>
+                              {up ? `Berkas (${words} kata)` : words > 0 ? `${words} kata` : 'Draf Template'}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 2: IDENTITAS NASKAH & LEMBAR PENGESAHAN */}
+              {activeTab === 'identitas' && (
+                <div className="space-y-3.5">
+                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-[11px] text-amber-800 leading-relaxed">
+                    💡 <strong>Data Identitas Naskah:</strong> Data di bawah akan tercetak pada <em>Halaman Sampul (Cover)</em>, <em>Halaman Pengesahan</em>, dan tajuk sitasi <em>Abstrak</em> sesuai standar kampus Anda.
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 mb-1 block">
+                      Judul Lengkap Naskah Penelitian
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={metadata.judul}
+                      onChange={e => setMetadata({ ...metadata, judul: e.target.value })}
+                      className="w-full px-3 py-2 border border-zinc-200 rounded-xl text-xs font-semibold focus:border-[var(--color-brand-600)] outline-none"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 mb-1 block">
+                        Nama Mahasiswa (Penulis)
+                      </label>
+                      <input
+                        type="text"
+                        value={metadata.namaPenulis}
+                        onChange={e => setMetadata({ ...metadata, namaPenulis: e.target.value })}
+                        className="w-full px-3 py-2 border border-zinc-200 rounded-xl text-xs font-semibold focus:border-[var(--color-brand-600)] outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 mb-1 block">
+                        Nomor Induk Mahasiswa (NIM)
+                      </label>
+                      <input
+                        type="text"
+                        value={metadata.nim}
+                        onChange={e => setMetadata({ ...metadata, nim: e.target.value })}
+                        className="w-full px-3 py-2 border border-zinc-200 rounded-xl text-xs font-semibold focus:border-[var(--color-brand-600)] outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                      <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 mb-1 block">
+                        Program Studi / Jurusan
+                      </label>
+                      <input
+                        type="text"
+                        value={metadata.jurusan}
+                        onChange={e => setMetadata({ ...metadata, jurusan: e.target.value, programStudi: `Program Studi Sarjana ${e.target.value}` })}
+                        className="w-full px-3 py-2 border border-zinc-200 rounded-xl text-xs font-semibold focus:border-[var(--color-brand-600)] outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 mb-1 block">
+                        Fakultas
+                      </label>
+                      <input
+                        type="text"
+                        value={metadata.fakultas}
+                        onChange={e => setMetadata({ ...metadata, fakultas: e.target.value })}
+                        className="w-full px-3 py-2 border border-zinc-200 rounded-xl text-xs font-semibold focus:border-[var(--color-brand-600)] outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 mb-1 block">
+                        Universitas & Kota
+                      </label>
+                      <input
+                        type="text"
+                        value={metadata.universitas}
+                        onChange={e => setMetadata({ ...metadata, universitas: e.target.value })}
+                        className="w-full px-3 py-2 border border-zinc-200 rounded-xl text-xs font-semibold focus:border-[var(--color-brand-600)] outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Penguji & Pembimbing */}
+                  <div className="pt-2 border-t border-zinc-100">
+                    <div className="text-xs font-bold text-zinc-800 mb-2">Dosen Penguji & Pembimbing Skripsi</div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-[10px] font-semibold text-zinc-500 mb-1 block">Pembimbing I (Utama)</label>
+                        <input
+                          type="text"
+                          value={metadata.pembimbing1}
+                          onChange={e => setMetadata({ ...metadata, pembimbing1: e.target.value })}
+                          className="w-full px-2.5 py-1.5 border border-zinc-200 rounded-lg text-xs"
+                          placeholder="Nama lengkap & gelar"
+                        />
                       </div>
-                    );
-                  })}
+                      <div>
+                        <label className="text-[10px] font-semibold text-zinc-500 mb-1 block">Pembimbing II (Pendamping)</label>
+                        <input
+                          type="text"
+                          value={metadata.pembimbing2}
+                          onChange={e => setMetadata({ ...metadata, pembimbing2: e.target.value })}
+                          className="w-full px-2.5 py-1.5 border border-zinc-200 rounded-lg text-xs"
+                          placeholder="Nama lengkap & gelar"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-semibold text-zinc-500 mb-1 block">Dosen Penguji I (Ketua Penguji)</label>
+                        <input
+                          type="text"
+                          value={metadata.penguji1}
+                          onChange={e => setMetadata({ ...metadata, penguji1: e.target.value })}
+                          className="w-full px-2.5 py-1.5 border border-zinc-200 rounded-lg text-xs"
+                          placeholder="Nama lengkap & gelar"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-semibold text-zinc-500 mb-1 block">Ketua Program Studi</label>
+                        <input
+                          type="text"
+                          value={metadata.ketuaProdi}
+                          onChange={e => setMetadata({ ...metadata, ketuaProdi: e.target.value })}
+                          className="w-full px-2.5 py-1.5 border border-zinc-200 rounded-lg text-xs"
+                          placeholder="Nama lengkap & gelar"
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
 
-              {/* Applied Formats Summary */}
-              <div className="bg-[var(--color-brand-50)] border border-[var(--color-brand-100)] p-3.5 rounded-2xl text-xs space-y-1 text-[var(--color-brand-900)]">
-                <div className="font-bold flex items-center gap-1.5 mb-1">
-                  <Sparkles size={14} className="text-[var(--color-brand-600)]" />
-                  Format Standar Dokumen yang Diterapkan:
+              {/* TAB 3: KAIDAH & TATA LETAK NOMOR HALAMAN */}
+              {activeTab === 'kaidah' && (
+                <div className="space-y-4">
+                  <div className="bg-[var(--color-brand-50)] border border-[var(--color-brand-100)] p-4 rounded-2xl text-xs space-y-2.5 text-[var(--color-brand-900)]">
+                    <div className="font-bold flex items-center gap-1.5 text-sm">
+                      <Sparkles size={16} className="text-[var(--color-brand-600)]" />
+                      Penerapan Tata Letak Halaman (Sesuai Referensi)
+                    </div>
+                    <p className="text-[11px] leading-relaxed text-zinc-700">
+                      Sistem kompilasi menyusun berkas Word (.docx) murni dengan membagi naskah ke dalam <em>Section</em> terpisah sesuai Pedoman Penulisan Skripsi Indonesia:
+                    </p>
+                    <ul className="space-y-1.5 text-[11px] text-zinc-700 list-disc list-inside">
+                      <li><strong>Halaman Judul (Cover):</strong> Dihitung halaman i, namun nomor halaman <u>tidak dicetak</u>.</li>
+                      <li><strong>Bagian Awal (Pengesahan, Abstrak, Daftar Isi, dll):</strong> Menggunakan angka Romawi kecil (<strong>ii, iii, iv, v...</strong>) di posisi <u>Bawah Tengah</u>.</li>
+                      <li><strong>Halaman Pertama Setiap Bab:</strong> Memuat judul Bab, nomor halaman angka Arab (<strong>1, 6, 23...</strong>) di posisi <u>Bawah Tengah</u>.</li>
+                      <li><strong>Halaman Lanjutan dalam Bab:</strong> Nomor halaman angka Arab berada di posisi <u>Kanan Atas</u>.</li>
+                      <li><strong>Daftar Isi Otomatis:</strong> Dilengkapi garis titik-titik (dot leader) rapi dan nomor halaman tujuan yang presisi.</li>
+                    </ul>
+                  </div>
+
+                  {/* Format Aktif */}
+                  <div className="border border-zinc-200 rounded-2xl p-3.5 bg-zinc-50 text-xs">
+                    <div className="font-bold text-zinc-800 mb-2">Parameter Tipografi yang Diterapkan:</div>
+                    <div className="grid grid-cols-2 gap-2 text-zinc-600 text-[11px]">
+                      <div>• Margin Kertas: <strong>{format.marginTop} cm Atas, {format.marginLeft} cm Kiri, {format.marginBottom} cm Bawah, {format.marginRight} cm Kanan</strong></div>
+                      <div>• Jenis Huruf: <strong>{format.fontFamily} {format.fontSize}pt</strong></div>
+                      <div>• Spasi Baris: <strong>{format.lineSpacing} Spasi</strong> (Abstrak 1.0 spasi)</div>
+                      <div>• Indentasi Paragraf: <strong>1.27 cm (First Line Indent)</strong></div>
+                    </div>
+                  </div>
                 </div>
-                <div className="grid grid-cols-2 gap-1 text-[11px] text-zinc-700 font-medium">
-                  <div>• Margin: {format.marginTop}-{format.marginBottom}-{format.marginLeft}-{format.marginRight} cm</div>
-                  <div>• Font: {format.fontFamily} {format.fontSize}pt</div>
-                  <div>• Spasi: {format.lineSpacing}</div>
-                  <div>• Halaman Judul & Daftar Isi Otomatis</div>
-                </div>
-              </div>
+              )}
             </>
           ) : (
-            <div className="text-center py-6 space-y-3 animate-in zoom-in-95">
+            <div className="text-center py-8 space-y-3.5 animate-in zoom-in-95">
               <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-3xl flex items-center justify-center mx-auto shadow-sm">
                 <CheckCircle2 size={36} />
               </div>
-              <h3 className="font-bold text-lg text-zinc-900">Kompilasi Berhasil!</h3>
-              <p className="text-xs text-zinc-500 max-w-sm mx-auto">
-                File <strong>{customTitle}.docx</strong> telah diunduh secara otomatis dan tersimpan di Dashboard Anda.
+              <h3 className="font-bold text-lg text-zinc-900">Kompilasi Naskah Berhasil!</h3>
+              <p className="text-xs text-zinc-600 max-w-md mx-auto leading-relaxed">
+                Berkas <strong>{customTitle.replace(/\.docx?$/i, '')}.docx</strong> telah diunduh secara otomatis dengan format standar kampus resmi. Anda juga dapat mengunduh ulang melalui Dashboard Vault kapan saja.
               </p>
+              <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-3 rounded-xl text-xs max-w-sm mx-auto text-left space-y-1">
+                <div>✓ Nomor halaman Romawi & Arab otomatis per section</div>
+                <div>✓ Daftar Isi dengan nomor halaman tujuan yang presisi</div>
+                <div>✓ Format berkas DOCX murni kompatibel Word & Google Docs</div>
+              </div>
             </div>
           )}
         </div>
 
-        <div className="px-6 py-4 border-t border-zinc-100 bg-zinc-50/50 flex justify-end gap-3">
+        {/* Footer Buttons */}
+        <div className="px-6 py-4 border-t border-zinc-100 bg-zinc-50/70 flex justify-between items-center gap-3">
           {!compiled ? (
             <>
-              <button onClick={onClose} className="px-4 py-2.5 text-xs font-semibold text-zinc-600 hover:bg-zinc-200/60 rounded-xl transition-colors">
-                Batal
-              </button>
-              <button
-                onClick={handleStartCompile}
-                disabled={compiling}
-                className="px-6 py-2.5 bg-[var(--color-brand-600)] text-white font-semibold text-xs rounded-xl hover:bg-[var(--color-brand-500)] disabled:opacity-50 transition-all flex items-center gap-2 shadow-sm"
-              >
-                {compiling ? (
-                  <><RefreshCw size={14} className="animate-spin" /> Menggabungkan Bab...</>
-                ) : (
-                  <><Download size={14} /> Kompilasi & Unduh (.docx)</>
-                )}
-              </button>
+              <div className="text-[11px] text-zinc-500">
+                Format: <strong>{format.fontFamily} {format.fontSize}pt · Spasi {format.lineSpacing}</strong>
+              </div>
+              <div className="flex items-center gap-2.5">
+                <button 
+                  onClick={onClose} 
+                  disabled={compiling}
+                  className="px-4 py-2.5 text-xs font-semibold text-zinc-600 hover:bg-zinc-200/60 rounded-xl transition-colors disabled:opacity-50"
+                >
+                  Batal
+                </button>
+                <button
+                  onClick={handleStartCompile}
+                  disabled={compiling}
+                  className="px-6 py-2.5 bg-[var(--color-brand-600)] text-white font-semibold text-xs rounded-xl hover:bg-[var(--color-brand-500)] disabled:opacity-50 transition-all flex items-center gap-2 shadow-sm"
+                >
+                  {compiling ? (
+                    <><RefreshCw size={14} className="animate-spin" /> Mengompilasi Naskah .docx...</>
+                  ) : (
+                    <><Download size={14} /> Kompilasi & Unduh (.docx)</>
+                  )}
+                </button>
+              </div>
             </>
           ) : (
-            <button
-              onClick={onClose}
-              className="px-6 py-2.5 bg-[var(--color-brand-600)] text-white font-semibold text-xs rounded-xl hover:bg-[var(--color-brand-500)] transition-colors"
-            >
-              Selesai & Tutup
-            </button>
+            <div className="w-full flex justify-end">
+              <button
+                onClick={onClose}
+                className="px-6 py-2.5 bg-[var(--color-brand-600)] text-white font-semibold text-xs rounded-xl hover:bg-[var(--color-brand-500)] transition-colors"
+              >
+                Selesai & Tutup
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -844,11 +1053,35 @@ export default function WorkspaceClient() {
   const userId = session?.user?.id || 'default';
   const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Live Cloud Sync Status & Ref Trackers
+  const [cloudSyncStatus, setCloudSyncStatus] = useState<'saved' | 'saving' | 'error'>('saved');
+  const [lastCloudSyncTime, setLastCloudSyncTime] = useState<string>('');
+  const latestOutlineRef = useRef<OutlineItem[]>([]);
+  const latestContentsRef = useRef<Record<string, string>>({});
+  const hasPendingSyncRef = useRef<boolean>(false);
+  const hasUserModifiedRef = useRef<boolean>(false);
+  const workspaceNotifyTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Debounced notification for external dashboard widgets
+  const notifyWorkspaceUpdated = () => {
+    if (typeof window === 'undefined') return;
+    if (workspaceNotifyTimerRef.current) clearTimeout(workspaceNotifyTimerRef.current);
+    workspaceNotifyTimerRef.current = setTimeout(() => {
+      window.dispatchEvent(new CustomEvent('bbr_workspace_updated'));
+    }, 600);
+  };
+
   const triggerDatabaseSync = (outlineToSync: OutlineItem[], contentsToSync: Record<string, string>) => {
+    latestOutlineRef.current = outlineToSync;
+    latestContentsRef.current = contentsToSync;
+    hasPendingSyncRef.current = true;
+    hasUserModifiedRef.current = true;
+    setCloudSyncStatus('saving');
+
     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
     autoSaveTimerRef.current = setTimeout(async () => {
       try {
-        await fetch('/api/workspace', {
+        const res = await fetch('/api/workspace', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -856,11 +1089,20 @@ export default function WorkspaceClient() {
             contents: contentsToSync,
           }),
         });
+        if (res.ok) {
+          hasPendingSyncRef.current = false;
+          setCloudSyncStatus('saved');
+          setLastCloudSyncTime(new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }));
+        } else {
+          setCloudSyncStatus('error');
+        }
       } catch (err) {
         console.warn('[Workspace AutoSave] Could not sync to database:', err);
+        setCloudSyncStatus('error');
       }
     }, 1200);
   };
+
 
   const searchParams = useSearchParams();
   const [jenjang, setJenjang] = useState('S1');
@@ -917,6 +1159,9 @@ export default function WorkspaceClient() {
     if (typeof window === 'undefined') return;
 
     const loadState = () => {
+      // Guard: If user has already actively edited in this session, do not let external reload overwrite it
+      if (hasUserModifiedRef.current) return;
+
       const ob = localStorage.getItem(`bbr_${userId}_onboarding`) || localStorage.getItem('bbr_onboarding');
       let j = 'S1';
       if (ob) {
@@ -925,30 +1170,44 @@ export default function WorkspaceClient() {
       setJenjang(j);
 
       const savedOutline = localStorage.getItem(`bbr_${userId}_outline`) || localStorage.getItem('bbr_outline');
+      let currentOutline: OutlineItem[] = [];
       if (savedOutline) {
         try {
           const parsed = JSON.parse(savedOutline);
           if (Array.isArray(parsed) && parsed.length > 0) {
-            setOutline(parsed);
+            currentOutline = parsed;
           } else {
-            const initial = DEFAULT_OUTLINES[j] || DEFAULT_OUTLINES['S1'];
-            setOutline(initial);
-            localStorage.setItem('bbr_outline', JSON.stringify(initial));
+            currentOutline = DEFAULT_OUTLINES[j] || DEFAULT_OUTLINES['S1'];
           }
         } catch {
-          const initial = DEFAULT_OUTLINES[j] || DEFAULT_OUTLINES['S1'];
-          setOutline(initial);
+          currentOutline = DEFAULT_OUTLINES[j] || DEFAULT_OUTLINES['S1'];
         }
       } else {
-        const initial = DEFAULT_OUTLINES[j] || DEFAULT_OUTLINES['S1'];
-        setOutline(initial);
-        localStorage.setItem('bbr_outline', JSON.stringify(initial));
+        currentOutline = DEFAULT_OUTLINES[j] || DEFAULT_OUTLINES['S1'];
       }
 
+      // Ensure all IDs are standard UUIDs
+      const { normalized, idMap } = normalizeOutlineUUIDs(currentOutline);
+      setOutline(normalized);
+      latestOutlineRef.current = normalized;
+      localStorage.setItem(`bbr_${userId}_outline`, JSON.stringify(normalized));
+      localStorage.setItem('bbr_outline', JSON.stringify(normalized));
+
       const savedContents = localStorage.getItem(`bbr_${userId}_bab_contents`) || localStorage.getItem('bbr_bab_contents');
+      let currentContents: Record<string, string> = {};
       if (savedContents) {
-        try { setContents(JSON.parse(savedContents)); } catch {}
+        try { currentContents = JSON.parse(savedContents); } catch {}
       }
+      // Migrate contents keys if legacy IDs were converted to UUIDs
+      if (Object.keys(idMap).length > 0) {
+        for (const [oldId, newId] of Object.entries(idMap)) {
+          if (currentContents[oldId]) {
+            currentContents[newId] = currentContents[oldId];
+          }
+        }
+      }
+      setContents(currentContents);
+      latestContentsRef.current = currentContents;
 
       const savedUploads = localStorage.getItem('bbr_bab_uploads');
       if (savedUploads) {
@@ -960,23 +1219,31 @@ export default function WorkspaceClient() {
         try { setFormat(JSON.parse(savedFormat)); } catch {}
       }
 
-      // Fetch authoritative state from database for logged in user
+      // Fetch authoritative state from database for logged in user (Cloud Revalidation)
       fetch('/api/workspace')
         .then((res) => (res.ok ? res.json() : null))
         .then((data) => {
           if (data?.success) {
-            if (Array.isArray(data.outline) && data.outline.length > 0) {
-              setOutline(data.outline);
-              localStorage.setItem(`bbr_${userId}_outline`, JSON.stringify(data.outline));
-              localStorage.setItem('bbr_outline', JSON.stringify(data.outline));
-            }
-            if (data.contents && Object.keys(data.contents).length > 0) {
-              setContents((prev) => {
-                const merged = { ...prev, ...data.contents };
-                localStorage.setItem(`bbr_${userId}_bab_contents`, JSON.stringify(merged));
-                localStorage.setItem('bbr_bab_contents', JSON.stringify(merged));
-                return merged;
-              });
+            // Guard: Only re-hydrate from DB if user hasn't actively modified content or has pending sync
+            if (!hasPendingSyncRef.current && !hasUserModifiedRef.current) {
+              if (Array.isArray(data.outline) && data.outline.length > 0) {
+                setOutline(data.outline);
+                latestOutlineRef.current = data.outline;
+                localStorage.setItem(`bbr_${userId}_outline`, JSON.stringify(data.outline));
+                localStorage.setItem('bbr_outline', JSON.stringify(data.outline));
+              }
+              if (data.contents && Object.keys(data.contents).length > 0) {
+                setContents((prev) => {
+                  if (hasUserModifiedRef.current) return prev;
+                  const merged = { ...prev, ...data.contents };
+                  latestContentsRef.current = merged;
+                  localStorage.setItem(`bbr_${userId}_bab_contents`, JSON.stringify(merged));
+                  localStorage.setItem('bbr_bab_contents', JSON.stringify(merged));
+                  return merged;
+                });
+              }
+              setCloudSyncStatus('saved');
+              setLastCloudSyncTime(new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }));
             }
           }
         })
@@ -985,28 +1252,50 @@ export default function WorkspaceClient() {
 
     loadState();
 
+    // Only listen to cross-tab storage changes (NEVER listen to self bbr_workspace_updated)
     window.addEventListener('storage', loadState);
-    window.addEventListener('bbr_workspace_updated', loadState);
 
     return () => {
       window.removeEventListener('storage', loadState);
-      window.removeEventListener('bbr_workspace_updated', loadState);
     };
   }, [userId]);
 
+  // Immediate flush before tab closes or navigates away
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (hasPendingSyncRef.current) {
+        try {
+          fetch('/api/workspace', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              outline: latestOutlineRef.current,
+              contents: latestContentsRef.current,
+            }),
+            keepalive: true,
+          });
+        } catch {}
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, []);
+
   // Save outline helper
   const saveOutline = (newOutline: OutlineItem[]) => {
+    hasUserModifiedRef.current = true;
     setOutline(newOutline);
+    latestOutlineRef.current = newOutline;
     localStorage.setItem(`bbr_${userId}_outline`, JSON.stringify(newOutline));
     localStorage.setItem('bbr_outline', JSON.stringify(newOutline));
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('bbr_workspace_updated'));
-    }
+    notifyWorkspaceUpdated();
     triggerDatabaseSync(newOutline, contents);
   };
 
   // Add Bab
   const handleAddBab = () => {
+    hasUserModifiedRef.current = true;
     const nextNum = outline.length + 1;
     const newBab: OutlineItem = {
       id: generateId(),
@@ -1024,6 +1313,7 @@ export default function WorkspaceClient() {
   // Delete Bab
   const handleDeleteBab = (babId: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
+    hasUserModifiedRef.current = true;
     if (outline.length <= 1) {
       alert('Minimal harus ada 1 bab di dalam naskah tugas akhir.');
       return;
@@ -1054,6 +1344,7 @@ export default function WorkspaceClient() {
       setEditingBabId(null);
       return;
     }
+    hasUserModifiedRef.current = true;
     const updated = outline.map(b => b.id === babId ? { ...b, title: editingBabDraft.trim() } : b);
     saveOutline(updated);
     setEditingBabId(null);
@@ -1061,6 +1352,7 @@ export default function WorkspaceClient() {
 
   // Add Sub-bab
   const handleAddSubBab = (babId: string, customTitle?: string) => {
+    hasUserModifiedRef.current = true;
     const bab = outline.find(b => b.id === babId);
     if (!bab) return;
     const babIdx = outline.findIndex(b => b.id === babId) + 1;
@@ -1081,6 +1373,7 @@ export default function WorkspaceClient() {
   // Delete Sub-bab
   const handleDeleteSubBab = (babId: string, childId: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
+    hasUserModifiedRef.current = true;
     const bab = outline.find(b => b.id === babId);
     const subBab = bab?.children?.find(c => c.id === childId);
     if (window.confirm(`Hapus sub-bab "${subBab?.title || 'ini'}"?`)) {
@@ -1099,6 +1392,7 @@ export default function WorkspaceClient() {
       setEditingSubBabId(null);
       return;
     }
+    hasUserModifiedRef.current = true;
     const updated = outline.map(b => 
       b.id === babId 
         ? {
@@ -1114,22 +1408,24 @@ export default function WorkspaceClient() {
   // Reset Outline
   const handleResetOutline = () => {
     if (window.confirm('Kembalikan struktur bab ke template standar kampus Anda?')) {
+      hasUserModifiedRef.current = true;
       const defaults = DEFAULT_OUTLINES[jenjang] || DEFAULT_OUTLINES['S1'];
-      saveOutline(defaults);
+      const { normalized } = normalizeOutlineUUIDs(defaults);
+      saveOutline(normalized);
       setActiveBabId(null);
     }
   };
 
   // Save content handler
   const handleSaveContent = (babId: string, newHtml: string) => {
+    hasUserModifiedRef.current = true;
     const updated = { ...contents, [babId]: newHtml };
     setContents(updated);
+    latestContentsRef.current = updated;
     localStorage.setItem(`bbr_${userId}_bab_contents`, JSON.stringify(updated));
     localStorage.setItem('bbr_bab_contents', JSON.stringify(updated));
     setLastSavedTime(new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }));
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('bbr_workspace_updated'));
-    }
+    notifyWorkspaceUpdated();
     triggerDatabaseSync(outline, updated);
   };
 
@@ -1137,9 +1433,7 @@ export default function WorkspaceClient() {
   const saveUploads = (newUploads: Record<string, UploadedBab>) => {
     setUploads(newUploads);
     localStorage.setItem('bbr_bab_uploads', JSON.stringify(newUploads));
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('bbr_workspace_updated'));
-    }
+    notifyWorkspaceUpdated();
   };
 
   const handleSaveFormat = (newFormat: DocFormat) => {
@@ -1399,6 +1693,43 @@ export default function WorkspaceClient() {
 
           {/* Right Action Tools */}
           <div className="flex items-center gap-2 shrink-0">
+            {/* REAL-TIME CLOUD SYNC INDICATOR */}
+            <div className="flex items-center">
+              {cloudSyncStatus === 'saving' && (
+                <div 
+                  className="px-2.5 py-1.5 rounded-xl border border-amber-200 bg-amber-50 text-amber-700 text-xs font-semibold flex items-center gap-1.5 animate-pulse shadow-2xs"
+                  title="Sedang menyimpan perubahan draf ke Supabase Cloud..."
+                >
+                  <RefreshCw size={12} className="animate-spin text-amber-600" />
+                  <span className="hidden sm:inline">Menyimpan ke Cloud...</span>
+                  <span className="sm:hidden">Menyimpan...</span>
+                </div>
+              )}
+              {cloudSyncStatus === 'saved' && (
+                <div 
+                  className="px-2.5 py-1.5 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 text-xs font-semibold flex items-center gap-1.5 shadow-2xs"
+                  title={`Tersimpan aman di Supabase Database (Terakhir: ${lastCloudSyncTime || 'Baru saja'})`}
+                >
+                  <ShieldCheck size={13} className="text-emerald-600" />
+                  <span className="hidden sm:inline">Tersimpan di Cloud</span>
+                  <span className="sm:hidden">Cloud</span>
+                  {lastCloudSyncTime && (
+                    <span className="text-[10px] text-emerald-600 font-normal">({lastCloudSyncTime})</span>
+                  )}
+                </div>
+              )}
+              {cloudSyncStatus === 'error' && (
+                <button
+                  onClick={() => triggerDatabaseSync(outline, contents)}
+                  className="px-2.5 py-1.5 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-colors"
+                  title="Gagal sinkron ke Supabase Cloud. Klik untuk mencoba lagi."
+                >
+                  <RotateCcw size={12} className="text-rose-600" />
+                  <span>Offline / Retry Sync</span>
+                </button>
+              )}
+            </div>
+
             {/* PROGRESS DROPDOWN BUTTON */}
             <div className="relative" ref={progressDropdownRef}>
               <button
@@ -1932,10 +2263,25 @@ export default function WorkspaceClient() {
                           </span>
                         )}
                       </div>
-                      <div className="text-[11px] text-zinc-500 mt-0.5 flex items-center gap-2">
+                      <div className="text-[11px] text-zinc-500 mt-0.5 flex items-center gap-2 flex-wrap">
                         <span>Format: {format.fontFamily} {format.fontSize}pt · Spasi {format.lineSpacing}</span>
-                        {lastSavedTime && (
-                          <span className="text-emerald-600 font-medium">· ✓ Tersimpan ({lastSavedTime})</span>
+                        {cloudSyncStatus === 'saving' && (
+                          <span className="text-amber-600 font-medium flex items-center gap-1">
+                            · <RefreshCw size={11} className="animate-spin" /> Menyimpan ke Cloud...
+                          </span>
+                        )}
+                        {cloudSyncStatus === 'saved' && (
+                          <span className="text-emerald-600 font-medium flex items-center gap-1">
+                            · <ShieldCheck size={11} /> Tersimpan di Cloud ({lastCloudSyncTime || lastSavedTime})
+                          </span>
+                        )}
+                        {cloudSyncStatus === 'error' && (
+                          <button
+                            onClick={() => triggerDatabaseSync(outline, contents)}
+                            className="text-rose-600 font-bold underline flex items-center gap-1 hover:text-rose-700 ml-1"
+                          >
+                            · <RotateCcw size={11} /> Belum tersinkron ke Cloud (Klik coba lagi)
+                          </button>
                         )}
                       </div>
                     </div>

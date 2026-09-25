@@ -2,26 +2,105 @@
 
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
-import { Search, Plus, Book, ExternalLink, Quote, Trash2, Check, BookOpen, Sliders, Settings } from 'lucide-react';
+import { Search, Plus, Book, ExternalLink, Quote, Trash2, Check, BookOpen, Sliders, Settings, Copy } from 'lucide-react';
 import type { CitationItem } from '@/components/editor/AIAssistantPopup';
 import AddCitationModal from '@/components/workspace/AddCitationModal';
 import CitationFormatModal, { CitationFormatConfig, DEFAULT_CITATION_FORMAT } from '@/components/workspace/CitationFormatModal';
 
+export function formatFullBibliographyEntry(
+  cit: CitationItem,
+  index: number,
+  config: CitationFormatConfig
+): string {
+  const authors = cit.authors?.trim() || 'Anonim';
+  const year = cit.year?.trim() || new Date().getFullYear().toString();
+  const rawTitle = cit.title?.trim() || 'Tanpa Judul';
+  const cleanTitle = rawTitle.replace(/[.,;:]+$/, '');
+  const journal = cit.journal?.trim() || '';
+  const cleanJournal = journal.replace(/[.,;:]+$/, '');
+  const doiUrl = cit.doi 
+    ? (cit.doi.startsWith('http') ? cit.doi : `https://doi.org/${cit.doi}`)
+    : cit.url?.trim() || '';
+
+  const cleanAuthors = authors.endsWith('.') ? authors : `${authors}.`;
+
+  let entry = '';
+
+  switch (config.style) {
+    case 'ieee': {
+      entry = `[${index + 1}] ${authors}, "${cleanTitle}," ${cleanJournal ? `${cleanJournal}, ` : ''}${year}.`;
+      if (config.includeDoi && doiUrl) {
+        entry += ` doi: ${doiUrl.replace(/^https?:\/\/doi\.org\//, '')}.`;
+      }
+      break;
+    }
+    case 'harvard': {
+      const authWithoutDot = authors.replace(/[.]+$/, '');
+      entry = `${authWithoutDot}, ${year}. ${cleanTitle}, ${cleanJournal ? `${cleanJournal}.` : ''}`.trim();
+      if (config.includeDoi && doiUrl) {
+        entry += ` Available at: <${doiUrl}>.`;
+      }
+      break;
+    }
+    case 'chicago': {
+      const authWithoutDot = authors.replace(/[.]+$/, '');
+      entry = `${authWithoutDot}. ${year}. "${cleanTitle}." ${cleanJournal ? `${cleanJournal}.` : ''}`.trim();
+      if (config.includeDoi && doiUrl) {
+        entry += ` ${doiUrl}.`;
+      }
+      break;
+    }
+    case 'vancouver': {
+      entry = `${index + 1}. ${cleanAuthors} ${cleanTitle}. ${cleanJournal ? `${cleanJournal}; ` : ''}${year}.`;
+      if (config.includeDoi && doiUrl) {
+        entry += ` Available from: ${doiUrl}`;
+      }
+      break;
+    }
+    case 'mla': {
+      entry = `${cleanAuthors} "${cleanTitle}." ${cleanJournal ? `${cleanJournal}, ` : ''}${year}.`;
+      if (config.includeDoi && doiUrl) {
+        entry += ` ${doiUrl}.`;
+      }
+      break;
+    }
+    case 'custom': {
+      const prefix = config.customPrefix ? `${config.customPrefix} ` : '';
+      const suffix = config.customSuffix ? ` ${config.customSuffix}` : '';
+      entry = `${prefix}${cleanAuthors} (${year}). ${cleanTitle}. ${cleanJournal ? `${cleanJournal}.` : ''}${suffix}`.trim();
+      if (config.includeDoi && doiUrl) {
+        entry += ` ${doiUrl}`;
+      }
+      break;
+    }
+    case 'apa7':
+    default: {
+      entry = `${cleanAuthors} (${year}). ${cleanTitle}. ${cleanJournal ? `${cleanJournal}.` : ''}`.trim();
+      if (config.includeDoi && doiUrl) {
+        entry += ` ${doiUrl}`;
+      }
+      break;
+    }
+  }
+
+  return entry.replace(/\s{2,}/g, ' ').trim();
+}
+
 const DEFAULT_CITATIONS: CitationItem[] = [
   {
     id: 'cit_default_1',
-    authors: 'Sugiyono',
-    year: '2021',
-    title: 'Metode Penelitian Kuantitatif, Kualitatif, dan R&D',
+    authors: 'Sugiyono, D.',
+    year: '2013',
+    title: 'Metode penelitian kuantitatif. Kualitatif, dan Tindakan, 189-190',
     journal: 'Alfabeta Bandung',
-    url: 'https://scholar.google.com/scholar?q=Metode+Penelitian+Kuantitatif+Kualitatif+dan+R%26D+Sugiyono+2021',
+    url: 'https://scholar.google.com/scholar?q=Metode+Penelitian+Kuantitatif+Kualitatif+dan+Tindakan+Sugiyono',
   },
   {
     id: 'cit_default_2',
     authors: 'Nielsen, J., & Kurniawan, S.',
     year: '2021',
     title: 'User Interface Design Guidelines for Elderly Users in E-Commerce Platforms',
-    journal: 'International Journal of Human-Computer Studies',
+    journal: 'International Journal of Human-Computer Studies, 152, 102688',
     doi: '10.1016/j.ijhcs.2021.102688',
     url: 'https://doi.org/10.1016/j.ijhcs.2021.102688',
   }
@@ -32,7 +111,8 @@ export default function CitationPanel() {
   const userId = session?.user?.id || 'default';
   const [citations, setCitations] = useState<CitationItem[]>([]);
   const [search, setSearch] = useState('');
-  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [copiedFullId, setCopiedFullId] = useState<string | null>(null);
+  const [copiedInTextId, setCopiedInTextId] = useState<string | null>(null);
   
   // Modals state
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -145,7 +225,17 @@ export default function CitationPanel() {
     }
   };
 
-  // Generate In-text citation copy according to active format config
+  // 1. Copy complete 1-line full bibliography reference entry according to active style
+  const handleCopyFullBibliography = (cit: CitationItem, index: number) => {
+    const fullEntry = formatFullBibliographyEntry(cit, index, formatConfig);
+    navigator.clipboard.writeText(fullEntry);
+    if (cit.id) {
+      setCopiedFullId(cit.id);
+      setTimeout(() => setCopiedFullId(null), 2000);
+    }
+  };
+
+  // 2. Generate In-text citation copy according to active format config
   const handleCopyInText = (cit: CitationItem, index: number) => {
     const authorLastname = cit.authors.split(',')[0].trim();
     let inText = `(${authorLastname}, ${cit.year})`;
@@ -159,8 +249,8 @@ export default function CitationPanel() {
 
     navigator.clipboard.writeText(inText);
     if (cit.id) {
-      setCopiedId(cit.id);
-      setTimeout(() => setCopiedId(null), 1500);
+      setCopiedInTextId(cit.id);
+      setTimeout(() => setCopiedInTextId(null), 2000);
     }
   };
 
@@ -245,7 +335,7 @@ export default function CitationPanel() {
           filtered.map((cit, idx) => (
             <div 
               key={cit.id || cit.title} 
-              className="bg-white p-3 rounded-2xl border border-zinc-200 shadow-2xs hover:border-[var(--color-brand-400)]/60 transition-all group relative space-y-1.5"
+              className="bg-white p-3 rounded-2xl border border-zinc-200 shadow-2xs hover:border-[var(--color-brand-400)]/60 transition-all group relative space-y-2"
             >
               <div className="flex items-start justify-between gap-2">
                 <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[var(--color-brand-600)] bg-[var(--color-brand-50)] px-2 py-0.5 rounded-md border border-[var(--color-brand-100)]">
@@ -264,25 +354,49 @@ export default function CitationPanel() {
                 {cit.journal}
               </p>
 
-              {/* Action Buttons */}
-              <div className="pt-2 border-t border-zinc-100 flex items-center justify-between gap-2 text-xs">
-                <button
-                  type="button"
-                  onClick={() => handleCopyInText(cit, idx)}
-                  className="flex items-center gap-1 text-[11px] font-bold text-[var(--color-brand-600)] hover:text-[var(--color-brand-500)] transition-colors"
-                  title="Salin format in-text citation sesuai style aktif"
-                >
-                  {copiedId === cit.id ? <Check size={12} className="text-emerald-600" /> : <Quote size={12} />}
-                  <span>{copiedId === cit.id ? 'Tersalin' : 'Sitasi Teks'}</span>
-                </button>
+              {/* Formatted Full Bibliography Preview */}
+              <div className="p-2 rounded-xl bg-zinc-50 border border-zinc-200/70 text-[10.5px] text-zinc-700 leading-relaxed select-all">
+                <span className="font-semibold text-zinc-400 text-[9.5px] block uppercase tracking-wider mb-0.5">Daftar Pustaka 1 Baris Full:</span>
+                {formatFullBibliographyEntry(cit, idx, formatConfig)}
+              </div>
 
-                <div className="flex items-center gap-2">
+              {/* Action Buttons */}
+              <div className="pt-2 border-t border-zinc-100 flex flex-wrap items-center justify-between gap-1.5 text-xs">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {/* Primary: Salin Daftar Pustaka Lengkap 1 Baris Sesuai Style Aktif */}
+                  <button
+                    type="button"
+                    onClick={() => handleCopyFullBibliography(cit, idx)}
+                    className={`flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-lg transition-all shadow-2xs ${
+                      copiedFullId === cit.id
+                        ? 'bg-emerald-600 text-white'
+                        : 'bg-[var(--color-brand-600)] hover:bg-[var(--color-brand-700)] text-white'
+                    }`}
+                    title="Salin 1 baris lengkap daftar pustaka sesuai style aktif"
+                  >
+                    {copiedFullId === cit.id ? <Check size={12} className="text-white" /> : <Copy size={12} />}
+                    <span>{copiedFullId === cit.id ? 'Daftar Pustaka Tersalin!' : 'Salin Daftar Pustaka'}</span>
+                  </button>
+
+                  {/* Secondary: Sitasi Teks */}
+                  <button
+                    type="button"
+                    onClick={() => handleCopyInText(cit, idx)}
+                    className="flex items-center gap-1 text-[11px] font-semibold text-zinc-600 hover:text-[var(--color-brand-600)] bg-zinc-100 hover:bg-zinc-200 px-2 py-1 rounded-lg transition-colors"
+                    title="Salin sitasi singkat dalam teks naskah (misal: (Sugiyono, 2021))"
+                  >
+                    {copiedInTextId === cit.id ? <Check size={12} className="text-emerald-600" /> : <Quote size={11} />}
+                    <span>{copiedInTextId === cit.id ? 'Tersalin' : 'Sitasi Teks'}</span>
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-1 ml-auto">
                   {cit.url && (
                     <a 
                       href={cit.url} 
                       target="_blank" 
                       rel="noreferrer" 
-                      className="text-[11px] font-semibold text-zinc-500 hover:text-[var(--color-brand-600)] inline-flex items-center gap-0.5 transition-colors"
+                      className="text-[11px] font-semibold text-zinc-500 hover:text-[var(--color-brand-600)] inline-flex items-center gap-0.5 transition-colors p-1"
                       title="Buka publikasi resmi"
                     >
                       <span>Akses</span>
@@ -303,6 +417,7 @@ export default function CitationPanel() {
           ))
         )}
       </div>
+
 
       {/* Manual Add Citation Modal */}
       {isAddModalOpen && (
