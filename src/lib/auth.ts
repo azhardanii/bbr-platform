@@ -57,11 +57,23 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             },
           });
         } else {
+          // If user was created by Lynk.id payment webhook before logging in, link google_id
+          const updates: any = {};
+          if (!existingUser.google_id && account?.providerAccountId) {
+            updates.google_id = account.providerAccountId;
+          }
+          if ((!existingUser.nama_lengkap || existingUser.nama_lengkap === "Mahasiswa") && user.name) {
+            updates.nama_lengkap = user.name;
+          }
           // Ensure admin users always have correct role + tier in DB
           if (isAdmin && (existingUser.role !== "admin" || existingUser.tier !== "summit")) {
+            updates.role = "admin";
+            updates.tier = "summit";
+          }
+          if (Object.keys(updates).length > 0) {
             await prisma.user.update({
               where: { email: normalizedEmail },
-              data: { role: "admin", tier: "summit" },
+              data: updates,
             });
           }
         }

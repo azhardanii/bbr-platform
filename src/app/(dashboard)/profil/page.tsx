@@ -15,6 +15,7 @@ import {
 } from "@/lib/quota";
 import { isUserAdmin } from "@/lib/roles";
 import QuotaModal from "@/components/quota/QuotaModal";
+import PaymentCheckoutModal, { CheckoutTarget } from "@/components/payment/PaymentCheckoutModal";
 
 const FEATURE_ROUTES: Record<FeatureKey, string> = {
   parafrase: "/tools/parafrase",
@@ -41,6 +42,7 @@ export default function ProfilPage() {
     return getUserQuota();
   });
   const [selectedFeatureForModal, setSelectedFeatureForModal] = useState<FeatureKey | null>(null);
+  const [checkoutTarget, setCheckoutTarget] = useState<CheckoutTarget | null>(null);
 
   const refreshQuota = () => {
     if (isAdmin) {
@@ -272,7 +274,7 @@ export default function ProfilPage() {
               <div className="flex flex-wrap items-center gap-2.5 shrink-0">
                 {quotaState.planTier === 'free' ? (
                   <button
-                    onClick={() => setPlanTier('lifetime')}
+                    onClick={() => setCheckoutTarget({ type: 'membership', packageId: 'lifetime' })}
                     className="px-5 py-2.5 rounded-xl bg-[var(--color-brand-600)] hover:bg-[var(--color-brand-700)] text-white font-bold text-xs shadow-sm transition-all flex items-center gap-2 cursor-pointer"
                   >
                     <Sparkles size={14} />
@@ -629,6 +631,16 @@ export default function ProfilPage() {
           isOpen={!!selectedFeatureForModal}
           onClose={() => setSelectedFeatureForModal(null)}
           onPurchased={refreshQuota}
+        />
+      )}
+
+      {/* Direct Payment Checkout Modal */}
+      {checkoutTarget && (
+        <PaymentCheckoutModal
+          isOpen={!!checkoutTarget}
+          target={checkoutTarget}
+          onClose={() => setCheckoutTarget(null)}
+          onSuccess={refreshQuota}
         />
       )}
     </div>

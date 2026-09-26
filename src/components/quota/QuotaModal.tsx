@@ -3,12 +3,12 @@
 import { useState } from 'react';
 import { 
   X, Sparkles, Zap, ShieldCheck, CheckCircle2, ArrowRight, 
-  AlertTriangle, Lock, ShoppingCart 
+  Lock, ShoppingCart 
 } from 'lucide-react';
 import { 
-  FeatureKey, FEATURES_CONFIG, getUserQuota, 
-  purchaseFeatureAddon, setPlanTier, checkFeatureQuota 
+  FeatureKey, FEATURES_CONFIG, getUserQuota, checkFeatureQuota 
 } from '@/lib/quota';
+import PaymentCheckoutModal, { CheckoutTarget } from '@/components/payment/PaymentCheckoutModal';
 
 interface QuotaModalProps {
   featureKey: FeatureKey;
@@ -23,88 +23,63 @@ export default function QuotaModal({
   onClose,
   onPurchased,
 }: QuotaModalProps) {
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [checkoutTarget, setCheckoutTarget] = useState<CheckoutTarget | null>(null);
 
-  if (!isOpen) return null;
+  if (!isOpen && !checkoutTarget) return null;
 
   const feature = FEATURES_CONFIG[featureKey];
   const quotaCheck = checkFeatureQuota(featureKey);
   const userQuota = getUserQuota();
   const isFreeTier = userQuota.planTier === 'free';
 
-  const handleBuyAddon = () => {
-    setIsProcessing(true);
-    setTimeout(() => {
-      const result = purchaseFeatureAddon(featureKey);
-      setIsProcessing(false);
-      if (result.success) {
-        setSuccessMsg(result.message);
-        setTimeout(() => {
-          setSuccessMsg(null);
-          onPurchased?.();
-          onClose();
-        }, 1400);
-      }
-    }, 600);
+  const handleOpenAddonCheckout = () => {
+    setCheckoutTarget({ type: 'addon', featureKey });
   };
 
-  const handleUpgradeLifetime = () => {
-    setIsProcessing(true);
-    setTimeout(() => {
-      setPlanTier('lifetime');
-      setIsProcessing(false);
-      setSuccessMsg('🎉 Selamat! Akun Anda berhasil di-upgrade ke Paket Lifetime Mahasiswa!');
-      setTimeout(() => {
-        setSuccessMsg(null);
-        onPurchased?.();
-        onClose();
-      }, 1500);
-    }, 700);
+  const handleOpenLifetimeCheckout = () => {
+    setCheckoutTarget({ type: 'membership', packageId: 'lifetime' });
+  };
+
+  const handleCheckoutSuccess = () => {
+    setCheckoutTarget(null);
+    onPurchased?.();
+    onClose();
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
-      <div 
-        className="bg-white rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl border border-zinc-200 animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="p-6 bg-gradient-to-br from-amber-500/10 via-[var(--color-brand-50)] to-white border-b border-zinc-100 relative">
-          <button 
-            onClick={onClose}
-            className="absolute top-5 right-5 p-1.5 rounded-full text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 transition-colors"
+    <>
+      {isOpen && !checkoutTarget && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div 
+            className="bg-white rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl border border-zinc-200 animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]"
+            onClick={(e) => e.stopPropagation()}
           >
-            <X size={18} />
-          </button>
+            {/* Header */}
+            <div className="p-6 bg-gradient-to-br from-amber-500/10 via-[var(--color-brand-50)] to-white border-b border-zinc-100 relative">
+              <button 
+                onClick={onClose}
+                className="absolute top-5 right-5 p-1.5 rounded-full text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 transition-colors cursor-pointer"
+              >
+                <X size={18} />
+              </button>
 
-          <div className="flex items-center gap-2.5 text-amber-700 text-xs font-bold uppercase tracking-wider mb-2">
-            <span className="p-1 rounded-lg bg-amber-100 text-amber-700">
-              <Lock size={14} />
-            </span>
-            <span>Kuota Pemakaian Habis</span>
-          </div>
-
-          <h3 className="font-display font-black text-2xl text-zinc-900 tracking-tight">
-            {feature.name}
-          </h3>
-          <p className="text-xs text-zinc-600 mt-1">
-            Kuota aktif Anda saat ini telah mencapai batas limit ({quotaCheck.used}/{quotaCheck.limit} {feature.unit}). Tambah kuota mikro satuan atau buka akses penuh tanpa batas.
-          </p>
-        </div>
-
-        {/* Modal Body / Purchasing Options */}
-        <div className="p-6 overflow-y-auto space-y-4 custom-scrollbar">
-          {successMsg ? (
-            <div className="py-12 flex flex-col items-center justify-center text-center space-y-3">
-              <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center animate-bounce">
-                <CheckCircle2 size={36} />
+              <div className="flex items-center gap-2.5 text-amber-700 text-xs font-bold uppercase tracking-wider mb-2">
+                <span className="p-1 rounded-lg bg-amber-100 text-amber-700">
+                  <Lock size={14} />
+                </span>
+                <span>Kuota Pemakaian Habis</span>
               </div>
-              <h4 className="font-bold text-lg text-zinc-900">{successMsg}</h4>
-              <p className="text-xs text-zinc-500">Kuota telah ditambahkan ke akun Anda.</p>
+
+              <h3 className="font-display font-black text-2xl text-zinc-900 tracking-tight">
+                {feature.name}
+              </h3>
+              <p className="text-xs text-zinc-600 mt-1">
+                Kuota aktif Anda saat ini telah mencapai batas limit ({quotaCheck.used}/{quotaCheck.limit} {feature.unit}). Tambah kuota mikro satuan atau buka akses penuh tanpa batas.
+              </p>
             </div>
-          ) : (
-            <>
+
+            {/* Modal Body / Purchasing Options */}
+            <div className="p-6 overflow-y-auto space-y-4 custom-scrollbar">
               {/* Option 1: Micro Add-on Top-Up for This Feature */}
               <div className="rounded-2xl border-2 border-[var(--color-brand-300)] bg-[var(--color-brand-50)]/40 p-4.5 relative hover:border-[var(--color-brand-500)] transition-all">
                 {feature.addon.badge && (
@@ -130,9 +105,8 @@ export default function QuotaModal({
                 </div>
 
                 <button
-                  onClick={handleBuyAddon}
-                  disabled={isProcessing}
-                  className="w-full mt-3.5 py-2.5 rounded-xl bg-[var(--color-brand-600)] hover:bg-[var(--color-brand-700)] text-white font-bold text-xs shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                  onClick={handleOpenAddonCheckout}
+                  className="w-full mt-3.5 py-2.5 rounded-xl bg-[var(--color-brand-600)] hover:bg-[var(--color-brand-700)] text-white font-bold text-xs shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <ShoppingCart size={14} />
                   <span>Beli Addon ({feature.addon.priceFormatted})</span>
@@ -170,9 +144,8 @@ export default function QuotaModal({
                   </ul>
 
                   <button
-                    onClick={handleUpgradeLifetime}
-                    disabled={isProcessing}
-                    className="w-full mt-3.5 py-2.5 rounded-xl bg-zinc-900 hover:bg-black text-white font-bold text-xs shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                    onClick={handleOpenLifetimeCheckout}
+                    className="w-full mt-3.5 py-2.5 rounded-xl bg-zinc-900 hover:bg-black text-white font-bold text-xs shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer"
                   >
                     <span>Upgrade ke Lifetime (Rp 199.000)</span>
                     <ArrowRight size={14} />
@@ -186,14 +159,24 @@ export default function QuotaModal({
                   <ShieldCheck size={13} className="text-emerald-600" /> Garansi Aman
                 </span>
                 <span>•</span>
-                <span>Aktivasi Otomatis Instan</span>
+                <span>Aktivasi Otomatis Instan via Lynk.id</span>
                 <span>•</span>
                 <span>Tanpa Langganan Berulang</span>
               </div>
-            </>
-          )}
+            </div>
+          </div>
         </div>
-      </div>
-    </div>
+      )}
+
+      {/* Lynk.id Checkout Modal */}
+      {checkoutTarget && (
+        <PaymentCheckoutModal
+          isOpen={!!checkoutTarget}
+          target={checkoutTarget}
+          onClose={() => setCheckoutTarget(null)}
+          onSuccess={handleCheckoutSuccess}
+        />
+      )}
+    </>
   );
 }
