@@ -3,18 +3,16 @@
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { 
-  X, CheckCircle2, AlertCircle, ShieldCheck, Sparkles, 
-  ArrowRight, ExternalLink, RefreshCw, Zap, Mail, 
-  User as UserIcon, Phone, ShoppingCart, Lock
+  X, CheckCircle2, ShieldCheck, Sparkles, 
+  ArrowRight, ExternalLink, RefreshCw, Zap, 
+  ShoppingCart, AlertCircle
 } from 'lucide-react';
 import { FeatureKey, FEATURES_CONFIG } from '@/lib/quota';
 import { 
   MEMBERSHIP_PACKAGES, 
   ADDON_LYNK_URLS, 
-  buildLynkCheckoutUrl,
   PackageTierInfo 
 } from '@/lib/paymentConfig';
-import { isGmailAddress, normalizeIndonesianPhone } from '@/lib/lynkid';
 
 export type CheckoutTarget = 
   | { type: 'membership'; packageId: 'lifetime' | 'summit' }
@@ -35,39 +33,14 @@ export default function PaymentCheckoutModal({
 }: PaymentCheckoutModalProps) {
   const { data: session } = useSession();
 
-  // Form states
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
-  const [emailError, setEmailError] = useState<string | null>(null);
-  const [phoneError, setPhoneError] = useState<string | null>(null);
-  const [touched, setTouched] = useState({ name: false, email: false, phone: false });
-
-  // Payment flow state
-  const [step, setStep] = useState<'form' | 'waiting' | 'confirmed'>('form');
+  // Payment flow state: 'ready' (overview) | 'waiting' (opened Lynk) | 'confirmed'
+  const [step, setStep] = useState<'ready' | 'waiting' | 'confirmed'>('ready');
   const [isVerifying, setIsVerifying] = useState(false);
   const [verifyMessage, setVerifyMessage] = useState<string | null>(null);
-  const [openedUrl, setOpenedUrl] = useState<string>('');
 
-  // Prefill form from user session if available
-  useEffect(() => {
-    if (session?.user) {
-      if (session.user.name && !name) {
-        setName(session.user.name);
-      }
-      if (session.user.email && !email) {
-        setEmail(session.user.email);
-        if (!isGmailAddress(session.user.email)) {
-          setEmailError('Wajib menggunakan akun @gmail.com agar sinkronisasi AI otomatis.');
-        }
-      }
-    }
-  }, [session, isOpen]);
-
-  // Reset state when opened with new target
   useEffect(() => {
     if (isOpen) {
-      setStep('form');
+      setStep('ready');
       setIsVerifying(false);
       setVerifyMessage(null);
     }
@@ -101,78 +74,24 @@ export default function PaymentCheckoutModal({
     highlights = [
       `+${feat.addon.amount} ${feat.unit} pemakaian aktif`,
       'Tanpa masa kadaluarsa (aktif selamanya)',
-      'Aktivasi otomatis instan dalam hitungan detik',
+      'Aktivasi otomatis instan via webhook Lynk.id',
       'Bisa diakumulasikan berkali-kali',
     ];
   }
 
-  // Validate email on change
-  const handleEmailChange = (val: string) => {
-    setEmail(val);
-    if (!val) {
-      setEmailError('Email tidak boleh kosong');
-    } else if (!isGmailAddress(val)) {
-      setEmailError('Email wajib berakhiran @gmail.com (contoh: namaanda@gmail.com)');
-    } else {
-      setEmailError(null);
-    }
-  };
-
-  // Validate phone on change
-  const handlePhoneChange = (val: string) => {
-    setPhone(val);
-    const cleaned = val.replace(/\D/g, '');
-    if (!cleaned) {
-      setPhoneError('Nomor WhatsApp wajib diisi');
-    } else if (cleaned.length < 9) {
-      setPhoneError('Nomor WhatsApp minimal 9 digit');
-    } else {
-      setPhoneError(null);
-    }
-  };
-
-  const isFormValid =
-    name.trim().length > 0 &&
-    isGmailAddress(email) &&
-    phone.replace(/\D/g, '').length >= 9;
+  // Pre-fill query param if user email is available from session
+  let finalLynkUrl = baseLynkUrl;
+  if (session?.user?.email) {
+    const separator = finalLynkUrl.includes('?') ? '&' : '?';
+    finalLynkUrl = `${finalLynkUrl}${separator}email=${encodeURIComponent(session.user.email)}`;
+  }
 
   const handleProceedToLynk = () => {
-    if (!isFormValid) {
-      setTouched({ name: true, email: true, phone: true });
-      if (!isGmailAddress(email)) {
-        setEmailError('Email wajib berakhiran @gmail.com');
-      }
-      return;
-    }
-
-    const normalizedPhone = normalizeIndonesianPhone(phone);
-    const checkoutUrl = buildLynkCheckoutUrl(baseLynkUrl, {
-      name: name.trim(),
-      email: email.trim().toLowerCase(),
-      phone: normalizedPhone,
-    });
-
-    setOpenedUrl(checkoutUrl);
     setStep('waiting');
 
-    // Save pending info to localStorage for recovery
-    try {
-      localStorage.setItem(
-        'bbr_pending_payment',
-        JSON.stringify({
-          email: email.trim().toLowerCase(),
-          name: name.trim(),
-          phone: normalizedPhone,
-          product: productTitle,
-          url: checkoutUrl,
-          timestamp: new Date().toISOString(),
-        })
-      );
-    } catch {}
-
-    // Open Lynk.id checkout page in new tab
+    // Open Lynk.id checkout page in a new tab
     if (typeof window !== 'undefined') {
-      window.open(checkoutUrl, '_blank', 'noopener,noreferrer');
+      window.open(finalLynkUrl, '_blank', 'noopener,noreferrer');
     }
   };
 
@@ -201,7 +120,7 @@ export default function PaymentCheckoutModal({
           const quotaItem = data.quota?.[target.featureKey];
           if (quotaItem && quotaItem.addon_bonus > 0) {
             setStep('confirmed');
-            setVerifyMessage('Pembayaran terverifikasi! Kuota add-on berhasil ditambahkan.');
+            setVerifyMessage('Pembayaran terverifikasi! Kuota add-on berhasil ditambahkan ke akun Anda.');
             setTimeout(() => {
               onSuccess?.();
               onClose();
@@ -212,9 +131,9 @@ export default function PaymentCheckoutModal({
       }
 
       setVerifyMessage(
-        'Pembayaran belum terdeteksi. Pastikan Anda telah menyelesaikan pembayaran di halaman Lynk.id, lalu klik tombol ini lagi.'
+        'Pembayaran belum terdeteksi di sistem kami. Jika baru saja menyelesaikan transfer di Lynk.id, tunggu beberapa detik lalu klik tombol ini lagi.'
       );
-    } catch (e) {
+    } catch {
       setVerifyMessage('Gagal memeriksa status pembayaran. Silakan coba sesaat lagi.');
     } finally {
       setIsVerifying(false);
@@ -240,7 +159,7 @@ export default function PaymentCheckoutModal({
             <span className="p-1 rounded-lg bg-[var(--color-brand-100)] text-[var(--color-brand-700)]">
               <ShoppingCart size={14} />
             </span>
-            <span>Checkout Pembayaran Lynk.id</span>
+            <span>Pembayaran via Lynk.id</span>
           </div>
 
           <div className="flex items-start justify-between gap-4">
@@ -263,7 +182,7 @@ export default function PaymentCheckoutModal({
 
         {/* Modal Body */}
         <div className="p-6 overflow-y-auto space-y-4 custom-scrollbar">
-          {step === 'form' && (
+          {step === 'ready' && (
             <>
               {/* Product Highlights */}
               <div className="bg-zinc-50 rounded-2xl p-4 border border-zinc-200/80">
@@ -280,131 +199,38 @@ export default function PaymentCheckoutModal({
                 </ul>
               </div>
 
-              {/* Input Form */}
-              <div className="space-y-3.5 pt-1">
-                {/* 1. Nama Lengkap */}
-                <div>
-                  <label className="block text-xs font-bold text-zinc-700 mb-1 flex items-center gap-1.5">
-                    <UserIcon size={13} className="text-zinc-500" />
-                    <span>Nama Lengkap</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={name}
-                    onChange={(e) => {
-                      setName(e.target.value);
-                      setTouched({ ...touched, name: true });
-                    }}
-                    placeholder="Contoh: Salsabila Putri"
-                    className="w-full px-3.5 py-2.5 bg-white border border-zinc-300 rounded-xl text-xs text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:border-[var(--color-brand-600)] focus:ring-2 focus:ring-[var(--color-brand-500)]/20 transition-all"
-                  />
-                  {touched.name && !name.trim() && (
-                    <p className="text-[11px] text-rose-500 mt-1 flex items-center gap-1">
-                      <AlertCircle size={12} /> Nama lengkap wajib diisi
-                    </p>
-                  )}
+              {/* Lynk Instructions Box (No double form) */}
+              <div className="p-4 bg-amber-50/70 rounded-2xl border border-amber-200 space-y-2 text-xs text-amber-950">
+                <div className="flex items-center gap-2 font-bold text-amber-900">
+                  <Sparkles size={16} className="text-amber-600 shrink-0" />
+                  <span>Pengisian Data Diri & Pembayaran di Lynk.id</span>
                 </div>
-
-                {/* 2. Email (Wajib Gmail) */}
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="text-xs font-bold text-zinc-700 flex items-center gap-1.5">
-                      <Mail size={13} className="text-zinc-500" />
-                      <span>Alamat Email (Wajib Gmail)</span>
-                    </label>
-                    <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
-                      Wajib @gmail.com
-                    </span>
-                  </div>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => {
-                      handleEmailChange(e.target.value);
-                      setTouched({ ...touched, email: true });
-                    }}
-                    placeholder="nama.anda@gmail.com"
-                    className={`w-full px-3.5 py-2.5 bg-white border rounded-xl text-xs text-zinc-900 placeholder:text-zinc-400 focus:outline-none transition-all ${
-                      emailError
-                        ? 'border-rose-300 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20'
-                        : isGmailAddress(email)
-                        ? 'border-emerald-300 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
-                        : 'border-zinc-300 focus:border-[var(--color-brand-600)] focus:ring-2 focus:ring-[var(--color-brand-500)]/20'
-                    }`}
-                  />
-                  {emailError ? (
-                    <p className="text-[11px] text-rose-600 font-medium mt-1 flex items-start gap-1">
-                      <AlertCircle size={12} className="shrink-0 mt-0.5" />
-                      <span>{emailError}</span>
-                    </p>
-                  ) : isGmailAddress(email) ? (
-                    <p className="text-[11px] text-emerald-600 font-medium mt-1 flex items-center gap-1">
-                      <CheckCircle2 size={12} /> Email Gmail valid untuk aktivasi otomatis
-                    </p>
-                  ) : (
-                    <p className="text-[10px] text-zinc-500 mt-1">
-                      Gunakan alamat Gmail yang sama saat login Google ke platform ini.
-                    </p>
-                  )}
-                </div>
-
-                {/* 3. Nomor WhatsApp / Telepon */}
-                <div>
-                  <label className="block text-xs font-bold text-zinc-700 mb-1 flex items-center gap-1.5">
-                    <Phone size={13} className="text-zinc-500" />
-                    <span>Nomor WhatsApp / HP Aktif</span>
-                  </label>
-                  <div className="relative flex items-center">
-                    <span className="absolute left-3.5 text-xs font-bold text-zinc-500 select-none">
-                      🇮🇩 +62
-                    </span>
-                    <input
-                      type="tel"
-                      value={phone.startsWith('62') ? phone.slice(2) : phone.startsWith('0') ? phone.slice(1) : phone}
-                      onChange={(e) => {
-                        handlePhoneChange(e.target.value);
-                        setTouched({ ...touched, phone: true });
-                      }}
-                      placeholder="81234567890"
-                      className="w-full pl-16 pr-3.5 py-2.5 bg-white border border-zinc-300 rounded-xl text-xs text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:border-[var(--color-brand-600)] focus:ring-2 focus:ring-[var(--color-brand-500)]/20 transition-all font-mono"
-                    />
-                  </div>
-                  {phoneError ? (
-                    <p className="text-[11px] text-rose-500 mt-1 flex items-center gap-1">
-                      <AlertCircle size={12} /> {phoneError}
-                    </p>
-                  ) : (
-                    <p className="text-[10px] text-zinc-500 mt-1">
-                      Untuk konfirmasi bukti pembayaran dan notifikasi kuota via WhatsApp.
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              {/* Payment Gateway Notes */}
-              <div className="p-3 bg-amber-50/60 rounded-xl border border-amber-200/80 text-[11px] text-amber-900 flex items-start gap-2">
-                <Sparkles size={15} className="text-amber-600 shrink-0 mt-0.5" />
-                <p>
-                  <strong>Aktivasi Instan Otomatis:</strong> Setelah bayar via Lynk.id (QRIS, VA BCA/Mandiri/BRI, atau E-Wallet), sistem webhook kami langsung mengaktifkan kuota Anda seketika!
+                <p className="text-[11px] leading-relaxed text-amber-900/90">
+                  Seluruh formulir (nama, email, no. telepon) dan pilihan pembayaran (QRIS, GoPay, OVO, ShopeePay, Virtual Account Bank) akan Anda isi dengan praktis langsung di halaman checkout resmi <strong>Lynk.id</strong>.
                 </p>
+                <div className="pt-1 border-t border-amber-200/60 text-[11px] font-semibold text-amber-900 flex items-start gap-1.5">
+                  <span className="text-amber-600">⚠️</span>
+                  <span>
+                    <strong>PENTING:</strong> Pastikan Anda mengisi <strong>Email Gmail (@gmail.com)</strong> yang sama dengan akun platform ini ({session?.user?.email ? <span className="font-mono underline">{session.user.email}</span> : 'akun Google Anda'}) agar akses kuota langsung terbuka otomatis tanpa menunggu!
+                  </span>
+                </div>
               </div>
 
               {/* Submit CTA */}
               <button
                 onClick={handleProceedToLynk}
-                disabled={!isFormValid}
-                className="w-full py-3 px-4 rounded-xl bg-[var(--color-brand-600)] hover:bg-[var(--color-brand-700)] text-white font-bold text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full py-3.5 px-4 rounded-xl bg-[var(--color-brand-600)] hover:bg-[var(--color-brand-700)] text-white font-bold text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer hover:shadow-lg"
               >
-                <span>Lanjut ke Pembayaran Lynk.id</span>
+                <span>Buka Halaman Pembayaran Lynk.id</span>
                 <ArrowRight size={14} />
               </button>
 
               <div className="flex items-center justify-center gap-3 text-[10px] text-zinc-500 pt-1">
                 <span className="flex items-center gap-1">
-                  <ShieldCheck size={12} className="text-emerald-600" /> QRIS & Bank VA Resmi
+                  <ShieldCheck size={12} className="text-emerald-600" /> QRIS & Bank VA Resmi Lynk.id
                 </span>
                 <span>•</span>
-                <span>Proses Cepat & Terenkripsi</span>
+                <span>Aktivasi Instan Otomatis</span>
               </div>
             </>
           )}
@@ -416,30 +242,33 @@ export default function PaymentCheckoutModal({
               </div>
 
               <div>
-                <h4 className="font-bold text-lg text-zinc-900">Menunggu Pembayaran Lynk.id</h4>
-                <p className="text-xs text-zinc-600 mt-1 max-w-sm mx-auto">
-                  Halaman pembayaran telah dibuka di tab baru. Silakan selesaikan pembayaran QRIS / Virtual Account / E-Wallet Anda.
+                <h4 className="font-bold text-lg text-zinc-900">Halaman Lynk.id Telah Dibuka</h4>
+                <p className="text-xs text-zinc-600 mt-1 max-w-sm mx-auto leading-relaxed">
+                  Silakan selesaikan pembayaran QRIS / Virtual Account / E-Wallet Anda di halaman resmi Lynk.id yang terbuka di tab baru.
                 </p>
               </div>
 
-              <div className="p-3 bg-zinc-50 border border-zinc-200 rounded-xl text-left text-xs w-full space-y-1">
+              <div className="p-3.5 bg-zinc-50 border border-zinc-200 rounded-xl text-left text-xs w-full space-y-1.5">
                 <div className="flex justify-between">
-                  <span className="text-zinc-500">Nama Pembeli:</span>
-                  <span className="font-bold text-zinc-800">{name}</span>
+                  <span className="text-zinc-500">Produk yang dipilih:</span>
+                  <span className="font-bold text-zinc-800">{productTitle}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-zinc-500">Email Gmail:</span>
-                  <span className="font-bold text-zinc-800 font-mono">{email}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-zinc-500">Total Tagihan:</span>
+                  <span className="text-zinc-500">Total Biaya:</span>
                   <span className="font-bold text-[var(--color-brand-700)]">{productPriceFormatted}</span>
+                </div>
+                <div className="flex justify-between text-[11px] text-zinc-500 pt-1 border-t border-zinc-200/60">
+                  <span>Status Webhook:</span>
+                  <span className="text-amber-700 font-semibold flex items-center gap-1">
+                    <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
+                    Menunggu konfirmasi payment.received
+                  </span>
                 </div>
               </div>
 
               {verifyMessage && (
-                <div className="p-3 bg-rose-50 text-rose-700 text-xs rounded-xl border border-rose-200 w-full flex items-start gap-2 text-left">
-                  <AlertCircle size={15} className="shrink-0 mt-0.5" />
+                <div className="p-3 bg-amber-50 text-amber-800 text-xs rounded-xl border border-amber-200 w-full flex items-start gap-2 text-left">
+                  <AlertCircle size={15} className="shrink-0 mt-0.5 text-amber-600" />
                   <span>{verifyMessage}</span>
                 </div>
               )}
@@ -448,27 +277,25 @@ export default function PaymentCheckoutModal({
                 <button
                   onClick={handleCheckStatus}
                   disabled={isVerifying}
-                  className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                  className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                 >
                   <RefreshCw size={13} className={isVerifying ? 'animate-spin' : ''} />
                   <span>{isVerifying ? 'Memeriksa Sistem...' : 'Sudah Bayar? Cek Status Kuota Sekarang'}</span>
                 </button>
 
-                {openedUrl && (
-                  <button
-                    onClick={() => window.open(openedUrl, '_blank', 'noopener,noreferrer')}
-                    className="w-full py-2 rounded-xl bg-zinc-100 hover:bg-zinc-200 text-zinc-700 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                  >
-                    <ExternalLink size={13} />
-                    <span>Buka Ulang Halaman Lynk.id</span>
-                  </button>
-                )}
+                <button
+                  onClick={() => window.open(finalLynkUrl, '_blank', 'noopener,noreferrer')}
+                  className="w-full py-2.5 rounded-xl bg-zinc-100 hover:bg-zinc-200 text-zinc-700 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <ExternalLink size={13} />
+                  <span>Buka Ulang Halaman Lynk.id</span>
+                </button>
 
                 <button
-                  onClick={() => setStep('form')}
+                  onClick={onClose}
                   className="text-xs text-zinc-500 hover:text-zinc-800 underline cursor-pointer pt-1"
                 >
-                  Kembali ubah formulir data diri
+                  Tutup jendela ini
                 </button>
               </div>
             </div>
