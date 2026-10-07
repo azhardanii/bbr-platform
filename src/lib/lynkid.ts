@@ -154,6 +154,7 @@ export function classifyLynkProducts(
 
   const tierPatterns = [
     /lifetime/i,
+    /akses lifetime/i,
     /summit/i,
     /drive/i,
     /personal/i,
@@ -161,6 +162,7 @@ export function classifyLynkProducts(
     /business\s*version/i,
     /member/i,
     /paket lengkap/i,
+    /xq66xon40g7v/i,
   ];
 
   const featureDetectors: Array<{
@@ -170,52 +172,64 @@ export function classifyLynkProducts(
   }> = [
     {
       feature: "parafrase",
-      pattern: /parafrase|paraphrase|turnitin/i,
+      pattern: /parafrase|paraphrase|turnitin|g4wwlxme885k/i,
       defaultAmount: 50,
     },
     {
       feature: "writingAssistant",
-      pattern: /bedah draf|penulisan|writing|klinik naskah|asisten penulisan/i,
+      pattern: /bedah draf|bedah draft|penulisan|writing|klinik naskah|kinlik naskah|asisten penulisan|yyggjn4pg3ym/i,
       defaultAmount: 40,
     },
     {
       feature: "judulFinder",
-      pattern: /judul|acc checker|ide riset/i,
+      pattern: /judul|judul finder|acc checker|ide riset|owee9o276po8/i,
       defaultAmount: 25,
     },
     {
       feature: "spss",
-      pattern: /spss|smartpls|olah data|statistik|interpreter bab 4/i,
+      pattern: /spss|smartpls|olah data|statistik|interpreter bab 4|l8qqg9dkpnx6/i,
       defaultAmount: 20,
     },
     {
       feature: "sidang",
-      pattern: /sidang|simulator sidang/i,
+      pattern: /sidang|simulator sidang|simulasi sidang|w9gg3p895v4j/i,
       defaultAmount: 5,
     },
     {
       feature: "sitasi",
-      pattern: /sitasi|jurnal|rujukan|daftar pustaka/i,
+      pattern: /sitasi|sitasi jurnal|jurnal|rujukan|daftar pustaka|z1mm52x949gw/i,
       defaultAmount: 50,
     },
     {
       feature: "scriptWa",
-      pattern: /script wa|pesan dosen|chat dosen/i,
+      pattern: /script wa|pesan dosen|chat dosen|3v99moeqjwqq/i,
       defaultAmount: 50,
     },
     {
       feature: "kompilasi",
-      pattern: /kompilasi|gabung bab|word/i,
+      pattern: /kompilasi|kompilasi dokumen|gabung bab|word|yn11o5jp2weo/i,
       defaultAmount: 10,
     },
   ];
 
   for (const item of items) {
     const title = item.title || "";
+    const itemSearchStr = [
+      item.title,
+      item.id,
+      item.uuid,
+      item.slug,
+      (item as any).url,
+      (item as any).product_url,
+      (item as any).link,
+    ]
+      .filter(Boolean)
+      .join(" ");
+
     const qty = item.qty && item.qty > 0 ? item.qty : 1;
 
     // Explicit Free version check
-    if (/free\s*version|paket\s*gratis|free\s*tier/i.test(title)) {
+    if (/free\s*version|paket\s*gratis|free\s*tier/i.test(itemSearchStr)) {
       isTierUpgrade = false;
       targetTier = "spark";
       targetRole = "free";
@@ -223,11 +237,11 @@ export function classifyLynkProducts(
     }
 
     // Check if this item triggers a Tier Upgrade
-    const isTierMatch = tierPatterns.some((pattern) => pattern.test(title));
-    if (isTierMatch || (grandTotal >= 140000 && !featureDetectors.some((f) => f.pattern.test(title)))) {
+    const isTierMatch = tierPatterns.some((pattern) => pattern.test(itemSearchStr));
+    if (isTierMatch || (grandTotal >= 140000 && !featureDetectors.some((f) => f.pattern.test(itemSearchStr)))) {
       isTierUpgrade = true;
       targetRole = "member";
-      if (grandTotal >= 200000 || /summit|pro|business|bussiness|content\s*plan/i.test(title)) {
+      if (grandTotal >= 200000 || /summit|pro|business|bussiness|content\s*plan/i.test(itemSearchStr)) {
         targetTier = "summit";
       } else {
         targetTier = "drive";
@@ -236,7 +250,7 @@ export function classifyLynkProducts(
 
     // Check if this item is a direct AI Quota Addon
     for (const detector of featureDetectors) {
-      if (detector.pattern.test(title)) {
+      if (detector.pattern.test(itemSearchStr)) {
         // Extract custom number like "+50" or "50x" if present in title
         const numMatch = title.match(/\+(\d+)/) || title.match(/(\d+)\s*(?:x|kali|sesi|analisis)/i);
         const parsedAmount = numMatch ? parseInt(numMatch[1], 10) : detector.defaultAmount;
@@ -254,8 +268,9 @@ export function classifyLynkProducts(
     if (Array.isArray(item.addons)) {
       for (const addon of item.addons) {
         const addonName = addon.name || "";
+        const addonSearchStr = [addon.name, addon.id, (addon as any).slug].filter(Boolean).join(" ");
         for (const detector of featureDetectors) {
-          if (detector.pattern.test(addonName)) {
+          if (detector.pattern.test(addonSearchStr)) {
             const numMatch = addonName.match(/\+(\d+)/) || addonName.match(/(\d+)\s*(?:x|kali|sesi|analisis)/i);
             const parsedAmount = numMatch ? parseInt(numMatch[1], 10) : detector.defaultAmount;
             quotaAddons.push({
