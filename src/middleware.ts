@@ -24,8 +24,11 @@ export default auth((req) => {
     return NextResponse.redirect(new URL(`/login?callbackUrl=${callbackUrl}`, nextUrl));
   }
 
-  // Redirect to dashboard if logged in and trying to access login page
+  // Redirect to dashboard if logged in and trying to access login page (except when explicitly logging out)
   if (isLoggedIn && nextUrl.pathname === "/login") {
+    if (nextUrl.searchParams.get("logout") || nextUrl.searchParams.get("error")) {
+      return NextResponse.next();
+    }
     return NextResponse.redirect(new URL("/dashboard", nextUrl));
   }
 

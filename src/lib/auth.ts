@@ -138,6 +138,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         if (token.sub) {
           session.user.id = token.sub;
         }
+        if (token.name) {
+          session.user.name = token.name as string;
+        }
         const email = session.user.email?.toLowerCase().trim() || (token.email as string)?.toLowerCase().trim();
         const isAdmin = isUserAdmin(email, token.role as string);
 

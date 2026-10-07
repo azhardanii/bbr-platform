@@ -22,6 +22,16 @@ export default function DashboardHeader({ defaultName }: { defaultName: string }
     
     fetchName();
 
+    // Fetch authoritative name from DB in case local storage was cleared
+    fetch("/api/user/onboarding")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.user?.nama_lengkap) {
+          setName(data.user.nama_lengkap.split(' ')[0]);
+        }
+      })
+      .catch(() => {});
+
     // Listen for storage events (if profile is updated in another tab/component)
     window.addEventListener("storage", fetchName);
     return () => window.removeEventListener("storage", fetchName);

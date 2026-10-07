@@ -16,6 +16,7 @@ import {
 import { isUserAdmin } from "@/lib/roles";
 import QuotaModal from "@/components/quota/QuotaModal";
 import PaymentCheckoutModal, { CheckoutTarget } from "@/components/payment/PaymentCheckoutModal";
+import { performLogout } from "@/lib/logout";
 
 const FEATURE_ROUTES: Record<FeatureKey, string> = {
   parafrase: "/tools/parafrase",
@@ -92,9 +93,27 @@ export default function ProfilPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const [userData, setUserData] = useState<any>({ namaLengkap: "Mahasiswa", jenjang: "S1", jurusan: "" });
+  const [userData, setUserData] = useState<any>({
+    namaLengkap: "Mahasiswa",
+    jenjang: "S1",
+    jurusan: "",
+    universitas: "",
+    semester: 8,
+    punyaJudul: "Belum",
+    judulSkripsi: "",
+  });
   const [isEditing, setIsEditing] = useState(false);
-  const [editForm, setEditForm] = useState({ namaLengkap: "", jenjang: "S1", jurusan: "" });
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [editForm, setEditForm] = useState({
+    namaLengkap: "",
+    jenjang: "S1",
+    jurusan: "",
+    universitas: "",
+    semester: 8,
+    punyaJudul: "Belum",
+    judulSkripsi: "",
+  });
 
   useEffect(() => {
     // 1. Instant load from local cache if present
@@ -104,19 +123,30 @@ export default function ProfilPage() {
         try {
           const parsed = JSON.parse(ob);
           setUserData(parsed);
-          setEditForm({ namaLengkap: parsed.namaLengkap || "", jenjang: parsed.jenjang || "S1", jurusan: parsed.jurusan || "" });
+          setEditForm({
+            namaLengkap: parsed.namaLengkap || "",
+            jenjang: parsed.jenjang || "S1",
+            jurusan: parsed.jurusan || "",
+            universitas: parsed.universitas || "",
+            semester: Number(parsed.semester) || 8,
+            punyaJudul: parsed.punyaJudul || "Belum",
+            judulSkripsi: parsed.judulSkripsi || "",
+          });
         } catch (e) {}
       }
     }
 
     // 2. Fetch authoritative profile from database
     fetch("/api/user/onboarding")
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) throw new Error("Database profile fetch failed");
+        return res.json();
+      })
       .then((data) => {
         if (data.user) {
           const u = data.user;
           const fresh = {
-            namaLengkap: u.nama_lengkap || "Mahasiswa",
+            namaLengkap: u.nama_lengkap || session?.user?.name || "Mahasiswa",
             jenjang: u.jenjang || "S1",
             jurusan: u.jurusan || "",
             universitas: u.universitas || "",
@@ -125,41 +155,71 @@ export default function ProfilPage() {
             judulSkripsi: u.judul_skripsi || "",
           };
           setUserData(fresh);
-          setEditForm({ namaLengkap: fresh.namaLengkap, jenjang: fresh.jenjang, jurusan: fresh.jurusan });
+          setEditForm({
+            namaLengkap: fresh.namaLengkap,
+            jenjang: fresh.jenjang,
+            jurusan: fresh.jurusan,
+            universitas: fresh.universitas,
+            semester: fresh.semester,
+            punyaJudul: fresh.punyaJudul,
+            judulSkripsi: fresh.judulSkripsi,
+          });
           if (typeof window !== "undefined") {
             if (userId) localStorage.setItem(`bbr_${userId}_onboarding`, JSON.stringify(fresh));
             localStorage.setItem("bbr_onboarding", JSON.stringify(fresh));
           }
         }
       })
-      .catch(() => {});
-  }, [userId]);
+      .catch((err) => {
+        console.warn("[ProfilPage] Database profile sync notice:", err);
+      });
+  }, [userId, session]);
 
   const handleSaveProfile = async () => {
+    setIsSaving(true);
+    setSaveStatus(null);
+
     const ob = localStorage.getItem(`bbr_${userId}_onboarding`) || localStorage.getItem("bbr_onboarding");
     let parsed = {};
     if (ob) {
       try { parsed = JSON.parse(ob); } catch (e) {}
     }
     const updated = { ...parsed, ...editForm };
+    
+    // Optimistic local update
     localStorage.setItem(`bbr_${userId}_onboarding`, JSON.stringify(updated));
     localStorage.setItem("bbr_onboarding", JSON.stringify(updated));
     setUserData(updated);
-    setIsEditing(false);
     window.dispatchEvent(new Event("storage"));
 
     // Sync to PostgreSQL database
     try {
-      await fetch("/api/user/onboarding", {
+      const res = await fetch("/api/user/onboarding", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updated),
       });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || "Gagal menyimpan ke database server");
+      }
+
       if (updateSession) {
         await updateSession({ name: updated.namaLengkap });
       }
-    } catch (e) {
+
+      setSaveStatus({ type: 'success', message: 'Profil berhasil diperbarui dan tersimpan ke database!' });
+      setIsEditing(false);
+      setTimeout(() => setSaveStatus(null), 3000);
+    } catch (e: any) {
       console.warn("[ProfilPage] Could not update profile in database:", e);
+      setSaveStatus({ 
+        type: 'error', 
+        message: e.message || 'Gagal menyimpan ke database. Periksa status koneksi database.' 
+      });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -508,9 +568,19 @@ export default function ProfilPage() {
                 <Mail size={16} /> {session?.user?.email || `${userData.namaLengkap.toLowerCase().replace(/\s+/g, "")}@gmail.com`}
               </p>
               
+              {saveStatus && (
+                <div className={`p-3 mb-4 rounded-xl text-xs w-full text-center ${
+                  saveStatus.type === 'success' 
+                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
+                    : 'bg-rose-50 text-rose-700 border border-rose-200'
+                }`}>
+                  {saveStatus.message}
+                </div>
+              )}
+
               <button 
                 onClick={() => setIsEditing(true)}
-                className="mb-8 px-6 py-2 bg-[var(--color-bg-muted)] text-[var(--color-text-primary)] font-semibold rounded-lg hover:bg-gray-200 transition-colors"
+                className="mb-8 px-6 py-2 bg-[var(--color-bg-muted)] text-[var(--color-text-primary)] font-semibold rounded-lg hover:bg-gray-200 transition-colors cursor-pointer"
               >
                 Ubah Profil
               </button>
@@ -518,12 +588,23 @@ export default function ProfilPage() {
           ) : (
             <div className="w-full max-w-sm mb-8 space-y-4">
               <div>
-                <label className="block text-sm font-semibold text-[var(--color-text-body)] mb-1">Nama Panggilan</label>
+                <label className="block text-sm font-semibold text-[var(--color-text-body)] mb-1">Nama Lengkap</label>
                 <input 
                   type="text" 
                   value={editForm.namaLengkap}
                   onChange={e => setEditForm({...editForm, namaLengkap: e.target.value})}
-                  className="w-full p-3 border-2 border-[var(--color-bg-muted)] rounded-lg focus:border-[var(--color-brand-600)] outline-none" 
+                  className="w-full p-3 border-2 border-[var(--color-bg-muted)] rounded-lg focus:border-[var(--color-brand-600)] outline-none text-sm" 
+                  placeholder="Nama Lengkap"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-[var(--color-text-body)] mb-1">Universitas / Kampus</label>
+                <input 
+                  type="text" 
+                  value={editForm.universitas}
+                  onChange={e => setEditForm({...editForm, universitas: e.target.value})}
+                  className="w-full p-3 border-2 border-[var(--color-bg-muted)] rounded-lg focus:border-[var(--color-brand-600)] outline-none text-sm" 
+                  placeholder="Contoh: Universitas Indonesia"
                 />
               </div>
               <div>
@@ -532,43 +613,91 @@ export default function ProfilPage() {
                   type="text" 
                   value={editForm.jurusan}
                   onChange={e => setEditForm({...editForm, jurusan: e.target.value})}
-                  className="w-full p-3 border-2 border-[var(--color-bg-muted)] rounded-lg focus:border-[var(--color-brand-600)] outline-none" 
+                  className="w-full p-3 border-2 border-[var(--color-bg-muted)] rounded-lg focus:border-[var(--color-brand-600)] outline-none text-sm" 
+                  placeholder="Contoh: Farmasi"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-semibold text-[var(--color-text-body)] mb-1">Jenjang</label>
-                <select 
-                  value={editForm.jenjang}
-                  onChange={e => setEditForm({...editForm, jenjang: e.target.value})}
-                  className="w-full p-3 border-2 border-[var(--color-bg-muted)] rounded-lg focus:border-[var(--color-brand-600)] outline-none bg-white"
-                >
-                  <option>S1</option>
-                  <option>S2</option>
-                  <option>S3</option>
-                </select>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-semibold text-[var(--color-text-body)] mb-1">Jenjang</label>
+                  <select 
+                    value={editForm.jenjang}
+                    onChange={e => setEditForm({...editForm, jenjang: e.target.value})}
+                    className="w-full p-3 border-2 border-[var(--color-bg-muted)] rounded-lg focus:border-[var(--color-brand-600)] outline-none bg-white text-sm"
+                  >
+                    <option>S1</option>
+                    <option>S2</option>
+                    <option>S3</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-[var(--color-text-body)] mb-1">Semester</label>
+                  <input 
+                    type="number" 
+                    value={editForm.semester}
+                    onChange={e => setEditForm({...editForm, semester: Number(e.target.value) || 1})}
+                    className="w-full p-3 border-2 border-[var(--color-bg-muted)] rounded-lg focus:border-[var(--color-brand-600)] outline-none text-sm" 
+                  />
+                </div>
               </div>
+              <div>
+                <label className="block text-sm font-semibold text-[var(--color-text-body)] mb-1">Judul Tugas Akhir / Skripsi</label>
+                <textarea 
+                  rows={2}
+                  value={editForm.judulSkripsi}
+                  onChange={e => setEditForm({...editForm, judulSkripsi: e.target.value, punyaJudul: e.target.value.trim() ? "Sudah" : "Belum"})}
+                  className="w-full p-3 border-2 border-[var(--color-bg-muted)] rounded-lg focus:border-[var(--color-brand-600)] outline-none text-sm resize-none" 
+                  placeholder="Masukkan judul skripsi atau penelitianmu (opsional)"
+                />
+              </div>
+
+              {saveStatus && (
+                <div className={`p-3 rounded-xl text-xs ${
+                  saveStatus.type === 'success' 
+                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
+                    : 'bg-rose-50 text-rose-700 border border-rose-200'
+                }`}>
+                  {saveStatus.message}
+                </div>
+              )}
+
               <div className="flex gap-2 pt-2">
                 <button 
                   onClick={() => setIsEditing(false)}
-                  className="flex-1 py-2 bg-[var(--color-bg-muted)] text-[var(--color-text-body)] font-semibold rounded-lg"
+                  disabled={isSaving}
+                  className="flex-1 py-2.5 bg-[var(--color-bg-muted)] text-[var(--color-text-body)] font-semibold rounded-lg cursor-pointer"
                 >
                   Batal
                 </button>
                 <button 
                   onClick={handleSaveProfile}
-                  className="flex-1 py-2 bg-[var(--color-brand-600)] text-white font-semibold rounded-lg"
+                  disabled={isSaving}
+                  className="flex-1 py-2.5 bg-[var(--color-brand-600)] text-white font-semibold rounded-lg hover:bg-[var(--color-brand-700)] transition-colors cursor-pointer disabled:opacity-50"
                 >
-                  Simpan
+                  {isSaving ? "Menyimpan..." : "Simpan"}
                 </button>
               </div>
             </div>
           )}
 
+          {/* Sync status */}
           <div className="w-full border-t border-[var(--color-bg-muted)] pt-6 flex justify-between items-center text-sm text-[var(--color-text-secondary)]">
             <span>Draf Tugas Akhir Tersimpan</span>
-            <span className="font-semibold text-emerald-600 flex items-center gap-1">
-              <CheckCircle2 size={16} /> Tersinkronisasi PostgreSQL
+            <span className="font-semibold text-emerald-600 flex items-center gap-1 text-xs">
+              <CheckCircle2 size={15} /> Tersinkronisasi PostgreSQL
             </span>
+          </div>
+
+          {/* Dedicated Logout Action Button */}
+          <div className="w-full border-t border-[var(--color-bg-muted)] pt-6 mt-6">
+            <button
+              type="button"
+              onClick={() => performLogout()}
+              className="w-full py-3 px-4 rounded-xl bg-red-50 hover:bg-red-100 text-red-700 font-bold text-xs border border-red-200 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-2xs hover:shadow-xs"
+            >
+              <LogOut size={16} />
+              <span>Keluar dari Akun (Logout)</span>
+            </button>
           </div>
         </div>
       )}

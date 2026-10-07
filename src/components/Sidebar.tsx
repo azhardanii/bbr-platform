@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { useSidebar } from "@/hooks/useSidebar";
 import { isUserAdmin } from "@/lib/roles";
+import { performLogout } from "@/lib/logout";
 
 export default function Sidebar() {
   const pathname = usePathname();
@@ -17,15 +18,7 @@ export default function Sidebar() {
   const isAdmin = isUserAdmin(session?.user?.email, (session?.user as any)?.role);
 
   const handleLogout = async () => {
-    try {
-      // Purge any local cached data to prevent data mixing between different users
-      Object.keys(localStorage).forEach((key) => {
-        if (key.startsWith("bbr_")) {
-          localStorage.removeItem(key);
-        }
-      });
-    } catch {}
-    await signOut({ callbackUrl: "/login" });
+    await performLogout();
   };
 
   const links = [

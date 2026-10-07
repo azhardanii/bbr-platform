@@ -25,15 +25,23 @@ export default function OnboardingPage() {
     if (step < 3) setStep(step + 1);
   };
 
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
   const handleFinish = async () => {
     setIsSubmitting(true);
+    setSubmitError(null);
     try {
       // 1. Save directly to Database via API
-      await fetch("/api/user/onboarding", {
+      const res = await fetch("/api/user/onboarding", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
       });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        console.warn("Onboarding API warning:", errorData);
+      }
 
       // 2. Save user-scoped cache to local storage
       const userId = session?.user?.id || "default";
@@ -50,7 +58,7 @@ export default function OnboardingPage() {
 
       window.dispatchEvent(new Event("storage"));
       router.push("/dashboard");
-    } catch (e) {
+    } catch (e: any) {
       console.error("Onboarding submission error:", e);
       // Fallback
       localStorage.setItem("bbr_onboarding", JSON.stringify(formData));
