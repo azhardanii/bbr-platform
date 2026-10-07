@@ -96,11 +96,17 @@ export function verifyLynkSignature(params: {
   receivedSignature?: string | null;
   secretKey?: string;
 }): { valid: boolean; calculatedHash: string; signatureString: string } {
-  const secretKey =
+  const secretKey = (
     params.secretKey ||
     process.env.LYNK_SECRET_KEY ||
     process.env.LYNKID_SECRET ||
-    "4Md3517SUUgAqNuxMFIJ8kB2paXsZHQk";
+    ""
+  ).trim();
+
+  if (!secretKey) {
+    console.error("[Lynk Webhook] LYNK_SECRET_KEY is not defined in environment variables!");
+    return { valid: false, calculatedHash: "", signatureString: "" };
+  }
 
   const signatureString = `${params.grandTotal}${params.refId}${params.messageId}${secretKey}`;
   const calculatedHash = crypto.createHash("sha256").update(signatureString).digest("hex");

@@ -24,7 +24,7 @@ const googleClientSecret = (
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   trustHost: true,
-  secret: (process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || "bbr-platform-super-secret-key-123").trim().replace(/^["']|["']$/g, ""),
+  secret: (process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || "").trim().replace(/^["']|["']$/g, ""),
   providers: [
     GoogleProvider({
       clientId: googleClientId,
