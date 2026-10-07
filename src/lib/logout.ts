@@ -4,11 +4,13 @@ import { signOut } from 'next-auth/react';
 
 /**
  * Perform a clean, complete logout:
- * 1. Purges all user-related localStorage keys (bbr_*, onboarding, quota, progress)
+ * 1. Purges all user-related localStorage keys (bbr_*, onboarding, quota, progress, user)
  * 2. Purges sessionStorage
- * 3. Calls /api/auth/logout to force-expire all server-side session cookies (authjs & next-auth)
- * 4. Calls NextAuth signOut
- * 5. Performs a hard window navigation to /login?logout=1 to ensure all React state & cache are flushed
+ * 3. Calls /api/auth/logout with no-store to force-expire all server-side session cookies
+ *    and trigger Clear-Site-Data header
+ * 4. Calls NextAuth signOut to invalidate client React session state
+ * 5. Uses window.location.replace('/login?logout=1') so the protected page is REPLACED
+ *    in the browser history stack, preventing the user from navigating back to it.
  */
 export async function performLogout() {
   // 1. Wipe client caches
@@ -17,7 +19,14 @@ export async function performLogout() {
       const keysToRemove: string[] = [];
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
-        if (key && (key.startsWith('bbr_') || key.includes('onboarding') || key.includes('quota'))) {
+        if (
+          key &&
+          (key.startsWith('bbr_') ||
+            key.includes('onboarding') ||
+            key.includes('quota') ||
+            key.includes('user') ||
+            key.includes('auth'))
+        ) {
           keysToRemove.push(key);
         }
       }
@@ -28,7 +37,7 @@ export async function performLogout() {
     console.warn('[Logout] Failed to clear local storage:', e);
   }
 
-  // 2. Clear server-side session cookies
+  // 2. Clear server-side session cookies & bfcache
   try {
     await fetch('/api/auth/logout', {
       method: 'POST',
@@ -45,8 +54,10 @@ export async function performLogout() {
     console.warn('[Logout] NextAuth signOut error:', e);
   }
 
-  // 4. Force full page reload to login screen
+  // 4. Critical: use window.location.replace instead of .href
+  // This replaces the current dashboard/profil page in the history stack,
+  // preventing the browser 'Back' button from returning to the protected view.
   if (typeof window !== 'undefined') {
-    window.location.href = '/login?logout=1';
+    window.location.replace('/login?logout=1');
   }
 }

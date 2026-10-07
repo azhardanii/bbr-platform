@@ -7,6 +7,12 @@ export async function POST() {
 
   const response = NextResponse.json({ success: true, message: "Logged out successfully" });
 
+  // 1. Send Clear-Site-Data to instruct browser to purge its memory and cache
+  response.headers.set("Clear-Site-Data", '"cache", "cookies", "storage"');
+  response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
+  response.headers.set("Pragma", "no-cache");
+  response.headers.set("Expires", "0");
+
   const authCookieNames = [
     "authjs.session-token",
     "__Secure-authjs.session-token",
@@ -22,31 +28,41 @@ export async function POST() {
     "authjs.pkce.code_verifier",
   ];
 
-  // Expire any existing auth cookies
+  const namesToClear = new Set<string>(authCookieNames);
   for (const c of allCookies) {
     if (
-      authCookieNames.includes(c.name) ||
       c.name.includes("authjs") ||
-      c.name.includes("next-auth")
+      c.name.includes("next-auth") ||
+      c.name.includes("session")
     ) {
-      response.cookies.set({
-        name: c.name,
-        value: "",
-        path: "/",
-        maxAge: 0,
-        expires: new Date(0),
-      });
+      namesToClear.add(c.name);
     }
   }
 
-  // Also explicitly set maxAge 0 for all common cookie names
-  for (const name of authCookieNames) {
+  // 2. Expire cookies across both secure (HTTPS) and standard environments
+  for (const name of namesToClear) {
+    // Delete for HTTPS / Secure
     response.cookies.set({
       name,
       value: "",
       path: "/",
       maxAge: 0,
       expires: new Date(0),
+      secure: true,
+      httpOnly: true,
+      sameSite: "lax",
+    });
+
+    // Also delete without secure flag for localhost/HTTP
+    response.cookies.set({
+      name,
+      value: "",
+      path: "/",
+      maxAge: 0,
+      expires: new Date(0),
+      secure: false,
+      httpOnly: true,
+      sameSite: "lax",
     });
   }
 

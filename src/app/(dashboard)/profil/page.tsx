@@ -30,7 +30,14 @@ const FEATURE_ROUTES: Record<FeatureKey, string> = {
 };
 
 export default function ProfilPage() {
-  const { data: session, update: updateSession } = useSession();
+  const { data: session, status, update: updateSession } = useSession();
+
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      window.location.replace("/login?logout=1");
+    }
+  }, [status]);
+
   const userId = session?.user?.id || "default";
   const userEmail = session?.user?.email?.toLowerCase().trim() || "";
   const userRole = (session?.user as any)?.role || "free";

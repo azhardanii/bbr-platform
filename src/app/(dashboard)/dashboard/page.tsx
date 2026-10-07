@@ -1,4 +1,5 @@
 import { auth } from "@/lib/auth";
+import { redirect } from "next/navigation";
 import Link from "next/link";
 import { ArrowRight, FileEdit } from "lucide-react";
 import ProgressTracker from "./ProgressTracker";
@@ -12,7 +13,12 @@ export const metadata = {
 
 export default async function DashboardPage() {
   const session = await auth();
-  const user = session?.user as any;
+
+  if (!session?.user) {
+    redirect("/login");
+  }
+
+  const user = session.user as any;
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 pb-10">

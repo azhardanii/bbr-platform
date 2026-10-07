@@ -1,15 +1,23 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { signIn } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
-import { Sparkles, ShieldCheck, BookOpen, AlertCircle, ArrowRight, Loader2 } from "lucide-react";
+import { Sparkles, ShieldCheck, BookOpen, AlertCircle, ArrowRight, Loader2, CheckCircle2 } from "lucide-react";
 
 function LoginCard() {
   const searchParams = useSearchParams();
   const errorParam = searchParams.get("error");
+  const isLoggedOut = searchParams.get("logout") === "1";
   const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    // If arriving from logout, clean the URL so ?logout=1 is not in history
+    if (isLoggedOut && typeof window !== "undefined") {
+      window.history.replaceState(null, "", "/login");
+    }
+  }, [isLoggedOut]);
 
   const handleGoogleSignIn = async () => {
     try {
@@ -60,6 +68,13 @@ function LoginCard() {
 
       {/* Main Content */}
       <div className="p-6 sm:p-8 space-y-5">
+        {isLoggedOut && (
+          <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center gap-2.5 animate-in fade-in">
+            <CheckCircle2 size={16} className="shrink-0 text-emerald-600" />
+            <div className="leading-snug">Anda telah berhasil keluar dari akun. Sesi login telah diakhiri dengan aman.</div>
+          </div>
+        )}
+
         {errorMessage && (
           <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-center gap-2.5">
             <AlertCircle size={16} className="shrink-0 text-red-600" />

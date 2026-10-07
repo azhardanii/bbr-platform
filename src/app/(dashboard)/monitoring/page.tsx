@@ -268,6 +268,10 @@ export default function MonitoringPage() {
 
   // Guard: admin only
   useEffect(() => {
+    if (status === "unauthenticated") {
+      window.location.replace("/login?logout=1");
+      return;
+    }
     if (status === "authenticated") {
       const email = session?.user?.email;
       const role = (session?.user as any)?.role;
