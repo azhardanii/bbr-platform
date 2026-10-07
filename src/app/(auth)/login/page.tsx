@@ -41,38 +41,38 @@ function LoginCard() {
   return (
     <div className="w-full max-w-md bg-white rounded-3xl shadow-xl border border-[var(--color-bg-muted)] overflow-hidden transition-all animate-in zoom-in-95 duration-300">
       {/* Brand Header */}
-      <div className="bg-[var(--color-brand-50)] p-8 text-center border-b border-[var(--color-brand-100)] relative">
-        <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-[var(--color-brand-600)] to-[var(--color-brand-500)] text-white font-black text-base shadow-md mb-4 ring-4 ring-[var(--color-brand-100)] select-none tracking-wider">
+      <div className="bg-[var(--color-brand-50)] p-6 sm:p-7 text-center border-b border-[var(--color-brand-100)] relative">
+        <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-br from-[var(--color-brand-600)] to-[var(--color-brand-500)] text-white font-black text-sm shadow-md mb-3 ring-4 ring-[var(--color-brand-100)] select-none tracking-wider">
           BBR
         </div>
         <div className="flex flex-col items-center select-none">
-          <span className="font-display font-bold text-xs tracking-widest text-[var(--color-brand-800)]/80 uppercase">
+          <span className="font-display font-bold text-[10px] tracking-widest text-[var(--color-brand-800)]/80 uppercase">
             Belajar Bareng
           </span>
-          <span className="font-display font-black text-3xl bg-gradient-to-r from-[var(--color-brand-600)] to-[var(--color-brand-500)] bg-clip-text text-transparent tracking-tight">
+          <span className="font-display font-black text-2xl sm:text-3xl bg-gradient-to-r from-[var(--color-brand-600)] to-[var(--color-brand-500)] bg-clip-text text-transparent tracking-tight">
             Roselini
           </span>
         </div>
-        <p className="text-[var(--color-text-secondary)] text-sm mt-2 max-w-xs mx-auto">
-          Platform all-in-one partner bimbingan tugas akhir & skripsi terintegrasi.
+        <p className="text-[var(--color-text-secondary)] text-xs mt-1.5">
+          Partner Cerdas Tugas Akhir & Skripsi Mahasiswa
         </p>
       </div>
 
       {/* Main Content */}
-      <div className="p-8 space-y-6">
+      <div className="p-6 sm:p-8 space-y-5">
         {errorMessage && (
-          <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-[var(--color-error)] text-xs flex items-start gap-3">
-            <AlertCircle size={18} className="shrink-0 mt-0.5 text-red-600" />
-            <div className="leading-relaxed">{errorMessage}</div>
+          <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-center gap-2.5">
+            <AlertCircle size={16} className="shrink-0 text-red-600" />
+            <div className="leading-snug">Gagal masuk. Silakan coba kembali dengan akun Google Anda.</div>
           </div>
         )}
 
-        <div className="space-y-3 text-center">
-          <h2 className="font-display font-bold text-xl text-[var(--color-text-primary)]">
-            Masuk ke Akun Anda
+        <div className="text-center space-y-1">
+          <h2 className="font-display font-bold text-lg text-[var(--color-text-primary)]">
+            Masuk atau Mulai Coba Gratis
           </h2>
-          <p className="text-xs text-[var(--color-text-secondary)] leading-relaxed">
-            Gunakan akun Google Anda untuk mengakses draf naskah, AI tools, dan workspace personal.
+          <p className="text-xs text-[var(--color-text-secondary)]">
+            Satu klik langsung terhubung ke workspace naskah dan AI tools Anda.
           </p>
         </div>
 
@@ -110,22 +110,17 @@ function LoginCard() {
                   d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
                 />
               </svg>
-              <span>Masuk dengan Akun Google</span>
+              <span>Lanjutkan dengan Google</span>
               <ArrowRight size={15} className="ml-auto text-zinc-400 group-hover:text-[var(--color-brand-600)] group-hover:translate-x-0.5 transition-all" />
             </>
           )}
         </button>
 
-        {/* Security & Feature Badges */}
-        <div className="pt-4 border-t border-[var(--color-bg-muted)] space-y-2.5">
-          <div className="flex items-center gap-2.5 text-xs text-[var(--color-text-secondary)]">
-            <ShieldCheck size={16} className="text-emerald-600 shrink-0" />
-            <span>Data naskah & draf tersimpan terisolasi per akun user.</span>
-          </div>
-          <div className="flex items-center gap-2.5 text-xs text-[var(--color-text-secondary)]">
-            <Sparkles size={16} className="text-[var(--color-brand-600)] shrink-0" />
-            <span>Akses langsung ke Workspace, AI Sidang, dan Klinik TA.</span>
-          </div>
+        {/* Friendly Footer Note */}
+        <div className="pt-3 text-center">
+          <p className="text-[11px] text-[var(--color-text-secondary)] leading-relaxed">
+            Belum punya akun? Akun starter gratis otomatis aktif begitu Anda login.
+          </p>
         </div>
       </div>
     </div>

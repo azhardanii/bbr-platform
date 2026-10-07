@@ -1798,7 +1798,7 @@ export default function Home() {
 
                 <div>
                   <a
-                    href="https://wa.me/6281234567890?text=Halo%20Admin%20BBR%2C%20saya%20mau%20aktivasi%20Paket%20Lifetime%20Access%20Belajar%20Bareng%20Roselini%20sekarang!"
+                    href="https://lynk.id/belajarbarengroseline/s/lifetime-bbr"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-[var(--color-brand-600)] hover:bg-[var(--color-brand-700)] text-white font-extrabold text-sm shadow-lg shadow-[var(--color-brand-600)]/20 hover:scale-[1.01] active:scale-100 transition-all text-center"
