@@ -214,12 +214,20 @@ export function classifyLynkProducts(
     const title = item.title || "";
     const qty = item.qty && item.qty > 0 ? item.qty : 1;
 
+    // Explicit Free version check
+    if (/free\s*version|paket\s*gratis|free\s*tier/i.test(title)) {
+      isTierUpgrade = false;
+      targetTier = "spark";
+      targetRole = "free";
+      continue;
+    }
+
     // Check if this item triggers a Tier Upgrade
     const isTierMatch = tierPatterns.some((pattern) => pattern.test(title));
     if (isTierMatch || (grandTotal >= 140000 && !featureDetectors.some((f) => f.pattern.test(title)))) {
       isTierUpgrade = true;
       targetRole = "member";
-      if (grandTotal >= 200000 || /summit|pro|business|bussiness/i.test(title)) {
+      if (grandTotal >= 200000 || /summit|pro|business|bussiness|content\s*plan/i.test(title)) {
         targetTier = "summit";
       } else {
         targetTier = "drive";

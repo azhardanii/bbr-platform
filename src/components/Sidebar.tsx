@@ -50,13 +50,18 @@ export default function Sidebar() {
         }`}>
         {isOpen ? (
           <>
-            <div className="flex flex-col select-none">
-              <span className="font-display font-bold text-xs tracking-wider text-[var(--color-brand-800)]/80 uppercase leading-tight">
-                Belajar Bareng
-              </span>
-              <span className="font-display font-black text-3xl bg-gradient-to-r from-[var(--color-brand-600)] to-[var(--color-brand-400)] bg-clip-text text-transparent leading-tight tracking-tight">
-                Roselini
-              </span>
+            <div className="flex items-center gap-2.5 select-none min-w-0">
+              <div className="h-9 px-2.5 rounded-xl bg-gradient-to-br from-[var(--color-brand-600)] to-[var(--color-brand-500)] flex items-center justify-center text-white font-black text-xs tracking-wider shadow-sm shrink-0">
+                BBR
+              </div>
+              <div className="flex flex-col min-w-0">
+                <span className="font-display font-bold text-[10px] tracking-wider text-[var(--color-brand-800)]/80 uppercase leading-tight truncate">
+                  Belajar Bareng
+                </span>
+                <span className="font-display font-black text-2xl bg-gradient-to-r from-[var(--color-brand-600)] to-[var(--color-brand-400)] bg-clip-text text-transparent leading-tight tracking-tight truncate">
+                  Roselini
+                </span>
+              </div>
             </div>
             <button
               onClick={() => setIsOpen(false)}
@@ -69,9 +74,9 @@ export default function Sidebar() {
           </>
         ) : (
           <>
-            <span className="font-display font-black text-xl bg-gradient-to-r from-[var(--color-brand-600)] to-[var(--color-brand-400)] bg-clip-text text-transparent tracking-wider select-none leading-none">
+            <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-[var(--color-brand-600)] to-[var(--color-brand-500)] flex items-center justify-center text-white font-black text-xs tracking-wider shadow-sm select-none">
               BBR
-            </span>
+            </div>
             <button
               onClick={() => setIsOpen(true)}
               title="Buka Sidebar"

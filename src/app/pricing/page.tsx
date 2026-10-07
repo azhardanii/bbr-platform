@@ -21,11 +21,11 @@ export default function PricingPage() {
       <header className="border-b border-zinc-200/80 bg-white/80 backdrop-blur-md sticky top-0 z-40">
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2 group">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[var(--color-brand-600)] to-amber-500 flex items-center justify-center text-white font-black text-sm shadow-sm group-hover:scale-105 transition-transform">
-              B
+            <div className="h-8 px-2 rounded-xl bg-gradient-to-tr from-[var(--color-brand-600)] to-amber-500 flex items-center justify-center text-white font-black text-xs tracking-wider shadow-sm group-hover:scale-105 transition-transform select-none">
+              BBR
             </div>
             <span className="font-display font-black text-lg tracking-tight text-zinc-900">
-              Belajar Bareng <span className="text-[var(--color-brand-600)]">Roseline</span>
+              Belajar Bareng <span className="text-[var(--color-brand-600)]">Roselini</span>
             </span>
           </Link>
 

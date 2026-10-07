@@ -87,7 +87,7 @@ export default function ProfilPage() {
   }, []);
 
   const handleCopyLink = () => {
-    navigator.clipboard.writeText("https://belajarbarengroselini.com/ref/BBR-MHS-2024");
+    navigator.clipboard.writeText("https://belajarbarengroselini.site/ref/BBR-MHS-2024");
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -610,7 +610,7 @@ export default function ProfilPage() {
             </p>
             <div className="mt-6 flex flex-col sm:flex-row gap-3">
               <div className="bg-white/10 border border-white/20 px-4 py-3 rounded-xl flex-1 flex items-center justify-between text-sm font-mono backdrop-blur-xs">
-                <span className="truncate">https://belajarbarengroselini.com/ref/BBR-MHS-2024</span>
+                <span className="truncate">https://belajarbarengroselini.site/ref/BBR-MHS-2024</span>
               </div>
               <button 
                 onClick={handleCopyLink}

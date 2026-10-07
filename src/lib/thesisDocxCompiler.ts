@@ -896,6 +896,34 @@ export async function generateThesisDocxBlob(options: ThesisCompileOptions): Pro
 
   // 4. DAFTAR GAMBAR
   if (includeDaftarGambar) {
+    // Scan contents for user-defined figures or fallback to full reference list from PDF
+    const detectedFigures: { title: string; page: number | string }[] = [];
+    chapterPageInfo.forEach((cp) => {
+      const rawText = (contents[cp.id] || '').replace(/<[^>]+>/g, '\n');
+      const lines = rawText.split('\n').map(l => l.trim()).filter(Boolean);
+      lines.forEach(line => {
+        if (/^Gambar\s+\d+[\.\d]*\b/i.test(line)) {
+          detectedFigures.push({ title: line, page: cp.startPage });
+        }
+      });
+    });
+
+    const defaultFigureList = [
+      { title: '2.1 Gambar Tumbuhan Putri Malu (Mimosa pudica)', page: chapterPageInfo[1]?.startPage ? chapterPageInfo[1].startPage + 1 : 7 },
+      { title: '2.2 Gambar Kultur C. albicans Pada Media SDA', page: chapterPageInfo[1]?.startPage ? chapterPageInfo[1].startPage + 5 : 11 },
+      { title: '2.3 Gambar Mikroskopis Jamur C. albicans', page: chapterPageInfo[1]?.startPage ? chapterPageInfo[1].startPage + 6 : 12 },
+      { title: '2.4 Gambar Germ-tube pada Jamur C. albicans', page: chapterPageInfo[1]?.startPage ? chapterPageInfo[1].startPage + 7 : 13 },
+      { title: '3.1 Gambar Kerangka Konsep Penelitian', page: chapterPageInfo[2]?.startPage || 23 },
+      { title: '5.1 Gambar Hasil Ekstraksi Maserasi Daun M. pudica', page: chapterPageInfo[4]?.startPage || 39 },
+      { title: '5.2 Gambar Hasil Fraksinasi Daun M. pudica', page: chapterPageInfo[4]?.startPage ? chapterPageInfo[4].startPage + 1 : 40 },
+      { title: '5.3 Gambar Penampakan Makroskopis Fungi C. albicans', page: chapterPageInfo[4]?.startPage ? chapterPageInfo[4].startPage + 2 : 41 },
+      { title: '5.4 Gambar Pengamatan Mikroskopis Pewarnaan Gram Fungi', page: chapterPageInfo[4]?.startPage ? chapterPageInfo[4].startPage + 2 : 41 },
+      { title: '5.5 Gambar Pengamatan Mikroskopis Germ-tube Test', page: chapterPageInfo[4]?.startPage ? chapterPageInfo[4].startPage + 3 : 42 },
+      { title: '5.6 Gambar Hasil Uji Daya Hambat Antifungi', page: chapterPageInfo[4]?.startPage ? chapterPageInfo[4].startPage + 4 : 43 },
+    ];
+
+    const activeFigures = detectedFigures.length > 0 ? detectedFigures : defaultFigureList;
+
     preliminaryChildren.push(
       new Paragraph({ children: [new PageBreak()] }),
       new Paragraph({
@@ -912,22 +940,14 @@ export async function generateThesisDocxBlob(options: ThesisCompileOptions): Pro
           new TextRun({ text: 'Halaman', bold: true, size: 22, font: fontFamily }),
         ],
       }),
-      new Paragraph({
+      ...activeFigures.map(fig => new Paragraph({
         tabStops: [{ type: TabStopType.RIGHT, position: 9025, leader: LeaderType.DOT }],
         spacing: { line: 360, before: 60, after: 60 },
         children: [
-          new TextRun({ text: 'Gambar 2.1 Ilustrasi dan Bagan Kerangka Konsep', font: fontFamily, size: 22 }),
-          new TextRun({ children: [new Tab(), '6'], font: fontFamily, size: 22 }),
+          new TextRun({ text: fig.title, font: fontFamily, size: 22 }),
+          new TextRun({ children: [new Tab(), String(fig.page)], font: fontFamily, size: 22 }),
         ],
-      }),
-      new Paragraph({
-        tabStops: [{ type: TabStopType.RIGHT, position: 9025, leader: LeaderType.DOT }],
-        spacing: { line: 360, before: 60, after: 60 },
-        children: [
-          new TextRun({ text: 'Gambar 4.1 Skema Prosedur Operasional Penelitian', font: fontFamily, size: 22 }),
-          new TextRun({ children: [new Tab(), '25'], font: fontFamily, size: 22 }),
-        ],
-      })
+      }))
     );
   }
 
@@ -944,23 +964,31 @@ export async function generateThesisDocxBlob(options: ThesisCompileOptions): Pro
       }),
       new Paragraph({
         spacing: { line: 360, before: 60, after: 60 },
-        children: [new TextRun({ text: 'ANOVA : Analysis of Variance', font: fontFamily, size: 22 })],
+        children: [new TextRun({ text: 'SDA : Sabouraud Dextrose Agar', font: fontFamily, size: 22 })],
       }),
       new Paragraph({
         spacing: { line: 360, before: 60, after: 60 },
-        children: [new TextRun({ text: 'BPOM : Badan Pengawas Obat dan Makanan', font: fontFamily, size: 22 })],
+        children: [new TextRun({ text: 'ATP : Adenosina trifosfat', font: fontFamily, size: 22 })],
       }),
       new Paragraph({
         spacing: { line: 360, before: 60, after: 60 },
-        children: [new TextRun({ text: 'CFU : Colony Forming Unit', font: fontFamily, size: 22 })],
+        children: [new TextRun({ text: 'DMSO : Dimetil sulfoksida', font: fontFamily, size: 22 })],
       }),
       new Paragraph({
         spacing: { line: 360, before: 60, after: 60 },
-        children: [new TextRun({ text: 'DMSO : Dimetil Sulfoksida', font: fontFamily, size: 22 })],
+        children: [new TextRun({ text: 'ELISA : Enzyme-linked Immunosorbent Assay', font: fontFamily, size: 22 })],
       }),
       new Paragraph({
         spacing: { line: 360, before: 60, after: 60 },
         children: [new TextRun({ text: 'KHM : Kadar Hambat Minimum', font: fontFamily, size: 22 })],
+      }),
+      new Paragraph({
+        spacing: { line: 360, before: 60, after: 60 },
+        children: [new TextRun({ text: 'KBM : Kadar Bunuh Minimum', font: fontFamily, size: 22 })],
+      }),
+      new Paragraph({
+        spacing: { line: 360, before: 60, after: 60 },
+        children: [new TextRun({ text: 'ANOVA : Analysis of Variance', font: fontFamily, size: 22 })],
       }),
       new Paragraph({
         spacing: { line: 360, before: 60, after: 60 },
@@ -971,6 +999,25 @@ export async function generateThesisDocxBlob(options: ThesisCompileOptions): Pro
 
   // 6. DAFTAR TABEL
   if (includeDaftarTabel) {
+    const detectedTables: { title: string; page: number | string }[] = [];
+    chapterPageInfo.forEach((cp) => {
+      const rawText = (contents[cp.id] || '').replace(/<[^>]+>/g, '\n');
+      const lines = rawText.split('\n').map(l => l.trim()).filter(Boolean);
+      lines.forEach(line => {
+        if (/^Tabel\s+\d+[\.\d]*\b/i.test(line)) {
+          detectedTables.push({ title: line, page: cp.startPage });
+        }
+      });
+    });
+
+    const defaultTableList = [
+      { title: 'Tabel 5.1. Persentase Rendemen Ekstrak Etanol 96%', page: chapterPageInfo[4]?.startPage || 39 },
+      { title: 'Tabel 5.2. Persentase Rendemen Fraksi Etil Asetat', page: chapterPageInfo[4]?.startPage ? chapterPageInfo[4].startPage + 1 : 40 },
+      { title: 'Tabel 5.3. Uji Daya Hambat Antifungi Ekstrak Daun M. pudica', page: chapterPageInfo[4]?.startPage ? chapterPageInfo[4].startPage + 3 : 42 },
+    ];
+
+    const activeTables = detectedTables.length > 0 ? detectedTables : defaultTableList;
+
     preliminaryChildren.push(
       new Paragraph({ children: [new PageBreak()] }),
       new Paragraph({
@@ -987,22 +1034,14 @@ export async function generateThesisDocxBlob(options: ThesisCompileOptions): Pro
           new TextRun({ text: 'Halaman', bold: true, size: 22, font: fontFamily }),
         ],
       }),
-      new Paragraph({
+      ...activeTables.map(tbl => new Paragraph({
         tabStops: [{ type: TabStopType.RIGHT, position: 9025, leader: LeaderType.DOT }],
         spacing: { line: 360, before: 60, after: 60 },
         children: [
-          new TextRun({ text: 'Tabel 4.1 Definisi Operasional Variabel Penelitian', font: fontFamily, size: 22 }),
-          new TextRun({ children: [new Tab(), '28'], font: fontFamily, size: 22 }),
+          new TextRun({ text: tbl.title, font: fontFamily, size: 22 }),
+          new TextRun({ children: [new Tab(), String(tbl.page)], font: fontFamily, size: 22 }),
         ],
-      }),
-      new Paragraph({
-        tabStops: [{ type: TabStopType.RIGHT, position: 9025, leader: LeaderType.DOT }],
-        spacing: { line: 360, before: 60, after: 60 },
-        children: [
-          new TextRun({ text: 'Tabel 5.1 Ringkasan Hasil Analisis Data dan Uji Hipotesis', font: fontFamily, size: 22 }),
-          new TextRun({ children: [new Tab(), '35'], font: fontFamily, size: 22 }),
-        ],
-      })
+      }))
     );
   }
 

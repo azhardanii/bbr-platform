@@ -42,8 +42,8 @@ function LoginCard() {
     <div className="w-full max-w-md bg-white rounded-3xl shadow-xl border border-[var(--color-bg-muted)] overflow-hidden transition-all animate-in zoom-in-95 duration-300">
       {/* Brand Header */}
       <div className="bg-[var(--color-brand-50)] p-8 text-center border-b border-[var(--color-brand-100)] relative">
-        <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-[var(--color-brand-600)] text-white shadow-md mb-4 ring-4 ring-[var(--color-brand-100)]">
-          <BookOpen size={26} className="text-white" />
+        <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-[var(--color-brand-600)] to-[var(--color-brand-500)] text-white font-black text-base shadow-md mb-4 ring-4 ring-[var(--color-brand-100)] select-none tracking-wider">
+          BBR
         </div>
         <div className="flex flex-col items-center select-none">
           <span className="font-display font-bold text-xs tracking-widest text-[var(--color-brand-800)]/80 uppercase">

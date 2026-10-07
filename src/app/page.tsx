@@ -414,15 +414,15 @@ export default function Home() {
         <div className="container max-w-screen-xl mx-auto px-4 h-16 flex items-center justify-between">
           {/* Logo Brand */}
           <Link href="/" className="flex items-center gap-2.5 group">
-            <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-red-600 to-rose-600 flex items-center justify-center text-white font-extrabold text-lg shadow-md shadow-red-500/20 group-hover:scale-105 transition-transform">
-              R
+            <div className="h-9 px-2.5 rounded-xl bg-gradient-to-br from-red-600 to-rose-600 flex items-center justify-center text-white font-black text-xs tracking-wider shadow-md shadow-red-500/20 group-hover:scale-105 transition-transform select-none">
+              BBR
             </div>
             <div className="flex flex-col">
               <span className="font-bold text-lg leading-tight tracking-tight text-slate-900">
                 Belajar<span className="text-red-600">Bareng</span>Roselini
               </span>
               <span className="text-[10px] text-slate-500 font-medium tracking-wide">
-                bbr.ac.id • Asisten AI Tugas Akhir
+                belajarbarengroselini.site • Asisten AI Tugas Akhir
               </span>
             </div>
           </Link>
@@ -788,7 +788,7 @@ export default function Home() {
                   <div className="flex-1 flex justify-center">
                     <div className="rounded-lg bg-white border border-slate-200 px-4 py-1 text-[11px] font-medium text-slate-500 flex items-center gap-2 shadow-2xs">
                       <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                      belajarbarengroselini.com/workspace
+                      belajarbarengroselini.site/workspace
                     </div>
                   </div>
                   <div className="text-[11px] font-semibold text-red-600 hidden sm:block">
@@ -1890,8 +1890,8 @@ export default function Home() {
             {/* Brand Column */}
             <div className="col-span-2 md:col-span-1 space-y-3">
               <div className="flex items-center gap-2.5">
-                <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-red-600 to-rose-600 flex items-center justify-center text-white font-extrabold text-sm shadow-xs">
-                  R
+                <div className="h-8 px-2 rounded-xl bg-gradient-to-br from-red-600 to-rose-600 flex items-center justify-center text-white font-black text-xs tracking-wider shadow-xs select-none">
+                  BBR
                 </div>
                 <span className="font-bold text-base text-slate-900 tracking-tight">
                   BelajarBarengRoselini
@@ -1901,7 +1901,7 @@ export default function Home() {
                 Platform bimbingan dan akselerasi tugas akhir AI untuk mahasiswa Indonesia. Lulus tepat waktu dengan integritas akademik.
               </p>
               <div className="text-xs text-slate-400">
-                bbr.ac.id • All rights reserved
+                belajarbarengroselini.site • All rights reserved
               </div>
             </div>
 
@@ -1941,7 +1941,7 @@ export default function Home() {
                 Bantuan & Kontak
               </h4>
               <ul className="space-y-2 text-xs text-slate-600">
-                <li><span>📧 support@belajarbarengroselini.com</span></li>
+                <li><span>📧 support@belajarbarengroselini.site</span></li>
                 <li><span>💬 WhatsApp: +62 812-3456-7890</span></li>
                 <li><span>📍 Jakarta & Bandung, Indonesia</span></li>
                 <li className="pt-2 text-[11px] text-slate-400">
