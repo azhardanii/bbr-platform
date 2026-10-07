@@ -712,7 +712,7 @@ export default function ProfilPage() {
               }`}>
                 {isAdmin ? "Admin Priority Bimbingan" : "Summit Tier Aktif"}
               </span>
-              <h3 className="font-bold text-lg text-[var(--color-text-primary)] mt-2">Bimbingan 1-on-1 bersama Kak Roseline</h3>
+              <h3 className="font-bold text-lg text-[var(--color-text-primary)] mt-2">Bimbingan 1-on-1 bersama Kak Roselini</h3>
               <p className="text-sm text-[var(--color-text-secondary)] mt-1">
                 {isAdmin ? "Akun Admin memiliki kuota konsultasi tak terbatas." : "Sisa 2 dari 2 sesi bimbingan private bulan ini."}
               </p>

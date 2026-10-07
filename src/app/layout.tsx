@@ -25,13 +25,13 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL("https://belajarbarengroselini.site"),
   title: {
-    default: "Belajar Bareng Roseline | Platform AI Skripsi & Riset Akademik #1 di Indonesia",
-    template: "%s | Belajar Bareng Roseline",
+    default: "Belajar Bareng Roselini | Platform AI Skripsi & Riset Akademik #1 di Indonesia",
+    template: "%s | Belajar Bareng Roselini",
   },
   description:
     "Solusi cerdas mahasiswa akhir menyelesaikan tugas akhir & skripsi lebih cepat. Dilengkapi 8 tools AI canggih: Parafrase Anti-Turnitin 6 Gaya, Simulator Sidang AI interaktif, Olah Data SPSS Bab 4, Judul Finder, dan Sitasi Jurnal APA 7th otomatis.",
   keywords: [
-    "Belajar Bareng Roseline",
+    "Belajar Bareng Roselini",
     "BBR",
     "BBR Platform",
     "AI Skripsi",
@@ -50,10 +50,10 @@ export const metadata: Metadata = {
     "Tugas Akhir Mahasiswa",
     "Tesis dan Disertasi",
   ],
-  applicationName: "Belajar Bareng Roseline",
-  authors: [{ name: "Belajar Bareng Roseline", url: "https://belajarbarengroselini.site" }],
-  creator: "Belajar Bareng Roseline",
-  publisher: "Belajar Bareng Roseline",
+  applicationName: "Belajar Bareng Roselini",
+  authors: [{ name: "Belajar Bareng Roselini", url: "https://belajarbarengroselini.site" }],
+  creator: "Belajar Bareng Roselini",
+  publisher: "Belajar Bareng Roselini",
   category: "Education",
   alternates: {
     canonical: "/",
@@ -76,8 +76,8 @@ export const metadata: Metadata = {
     type: "website",
     locale: "id_ID",
     url: "https://belajarbarengroselini.site",
-    siteName: "Belajar Bareng Roseline (BBR)",
-    title: "Belajar Bareng Roseline | Platform AI Skripsi & Riset Akademik #1 di Indonesia",
+    siteName: "Belajar Bareng Roselini (BBR)",
+    title: "Belajar Bareng Roselini | Platform AI Skripsi & Riset Akademik #1 di Indonesia",
     description:
       "Solusi cerdas mahasiswa akhir menyelesaikan tugas akhir & skripsi lebih cepat. Dilengkapi 8 tools AI canggih: Parafrase Anti-Turnitin 6 Gaya, Simulator Sidang AI interaktif, Olah Data SPSS Bab 4, dan Klinik Naskah.",
     images: [
@@ -85,17 +85,17 @@ export const metadata: Metadata = {
         url: "/og-image.png",
         width: 1200,
         height: 630,
-        alt: "Belajar Bareng Roseline - Asisten AI Tugas Akhir Mahasiswa",
+        alt: "Belajar Bareng Roselini - Asisten AI Tugas Akhir Mahasiswa",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Belajar Bareng Roseline | Platform AI Skripsi & Riset Akademik #1",
+    title: "Belajar Bareng Roselini | Platform AI Skripsi & Riset Akademik #1",
     description:
       "Solusi cerdas mahasiswa akhir menyelesaikan skripsi lebih cepat dengan 8 tools AI canggih: Parafrase, Simulator Sidang, SPSS, dan Sitasi Otomatis.",
     images: ["/og-image.png"],
-    creator: "@belajarbarengroseline",
+    creator: "@belajarbarengroselini",
   },
   robots: {
     index: true,
@@ -118,7 +118,7 @@ export default function RootLayout({
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "WebApplication",
-    name: "Belajar Bareng Roseline",
+    name: "Belajar Bareng Roselini",
     alternateName: "BBR Platform",
     url: "https://belajarbarengroselini.site",
     applicationCategory: "EducationalApplication",
@@ -133,7 +133,7 @@ export default function RootLayout({
     },
     author: {
       "@type": "Organization",
-      name: "Belajar Bareng Roseline",
+      name: "Belajar Bareng Roselini",
       url: "https://belajarbarengroselini.site",
       logo: "https://belajarbarengroselini.site/icon-512.png",
     },

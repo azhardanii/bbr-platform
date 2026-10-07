@@ -98,7 +98,7 @@ export async function GET(req: Request) {
       if (digits.startsWith("0")) digits = "62" + digits.slice(1);
       else if (!digits.startsWith("62")) digits = "62" + digits;
       const text = encodeURIComponent(
-        `Halo kak ${name !== "-" ? name : ""}, terima kasih telah bertransaksi di Belajar Bareng Roseline! Jika butuh panduan akses atau ada pertanyaan mengenai tools skripsi, tim kami siap membantu ya kak.`
+        `Halo kak ${name !== "-" ? name : ""}, terima kasih telah bertransaksi di Belajar Bareng Roselini! Jika butuh panduan akses atau ada pertanyaan mengenai tools skripsi, tim kami siap membantu ya kak.`
       );
       return `https://wa.me/${digits}?text=${text}`;
     };

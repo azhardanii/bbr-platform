@@ -46,7 +46,7 @@ export const MEMBERSHIP_PACKAGES: Record<"lifetime" | "summit", PackageTierInfo>
     price: 349000,
     priceFormatted: "Rp 349.000",
     originalPriceFormatted: "Rp 799.000",
-    description: "Akses Lifetime lengkap + 2 sesi mentoring private 1-on-1 bersama Kak Roseline.",
+    description: "Akses Lifetime lengkap + 2 sesi mentoring private 1-on-1 bersama Kak Roselini.",
     highlights: [
       "Seluruh kuota & fitur Paket Lifetime Mahasiswa",
       "2x Sesi Private 1-on-1 Bimbingan Video Call",

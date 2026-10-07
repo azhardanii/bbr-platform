@@ -195,7 +195,7 @@ export default function PricingPage() {
                   <span className="text-xs line-through text-zinc-400 font-bold">Rp 799.000</span>
                 </div>
                 <span className="text-[11px] text-violet-700 font-bold block mt-0.5">
-                  Mentoring langsung bersama Kak Roseline
+                  Mentoring langsung bersama Kak Roselini
                 </span>
               </div>
 
@@ -302,7 +302,7 @@ export default function PricingPage() {
               Mengapa formulir email wajib menggunakan @gmail.com?
             </h4>
             <p className="text-xs text-zinc-600 mt-1.5 leading-relaxed">
-              Karena platform Belajar Bareng Roseline menggunakan sistem autentikasi Google OAuth. Dengan menggunakan alamat Gmail yang sama saat membeli di Lynk.id, akunmu langsung otomatis tersambung dan kuota AI langsung aktif ketika kamu login menggunakan tombol Google Login.
+              Karena platform Belajar Bareng Roselini menggunakan sistem autentikasi Google OAuth. Dengan menggunakan alamat Gmail yang sama saat membeli di Lynk.id, akunmu langsung otomatis tersambung dan kuota AI langsung aktif ketika kamu login menggunakan tombol Google Login.
             </p>
           </div>
 
@@ -319,7 +319,7 @@ export default function PricingPage() {
 
       {/* Footer */}
       <footer className="border-t border-zinc-200/80 bg-white py-8 text-center text-xs text-zinc-500">
-        <p>© {new Date().getFullYear()} Belajar Bareng Roseline. Seluruh hak cipta dilindungi.</p>
+        <p>© {new Date().getFullYear()} Belajar Bareng Roselini. Seluruh hak cipta dilindungi.</p>
         <p className="mt-1 text-[11px] text-zinc-400">Pembayaran diproses secara aman melalui Lynk.id Payment Gateway.</p>
       </footer>
 

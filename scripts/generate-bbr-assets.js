@@ -119,7 +119,7 @@ const bbrOgSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630"
 
   <!-- Main Headline Title -->
   <text x="100" y="325" fill="url(#textGrad)" font-family="system-ui, sans-serif" font-size="54" font-weight="900" letter-spacing="-1">
-    Belajar Bareng Roseline
+    Belajar Bareng Roselini
   </text>
 
   <!-- Subheadline -->
@@ -190,7 +190,7 @@ async function main() {
 
   // Write site.webmanifest
   const manifest = {
-    name: 'Belajar Bareng Roseline',
+    name: 'Belajar Bareng Roselini',
     short_name: 'BBR Platform',
     description: 'Platform AI Skripsi & Riset Akademik #1 di Indonesia',
     start_url: '/',

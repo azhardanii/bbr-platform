@@ -118,7 +118,7 @@ const TIME_RANGE_OPTIONS: { id: TimeRange; label: string; desc: string }[] = [
 
 const CHECKOUT_LINKS = [
   {
-    name: "Akses Lifetime Belajar Bareng Roseline",
+    name: "Akses Lifetime Belajar Bareng Roselini",
     code: "xq66xon40g7v",
     url: "http://lynk.id/belajarbarengroselini/xq66xon40g7v/checkout",
     type: "Tier Akses",

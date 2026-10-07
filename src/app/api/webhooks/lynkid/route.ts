@@ -109,7 +109,7 @@ export async function POST(req: Request) {
     // 4. Extract and normalize customer information
     const normalizedEmail = (customer?.email || "").toLowerCase().trim();
     const normalizedPhone = normalizeIndonesianPhone(customer?.phone);
-    const customerName = customer?.name?.trim() || "Mahasiswa Belajar Bareng Roseline";
+    const customerName = customer?.name?.trim() || "Mahasiswa Belajar Bareng Roselini";
 
     if (!normalizedEmail) {
       await prisma.webhookLog.update({
