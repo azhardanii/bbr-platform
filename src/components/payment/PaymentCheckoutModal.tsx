@@ -199,19 +199,19 @@ export default function PaymentCheckoutModal({
                 </ul>
               </div>
 
-              {/* Lynk Instructions Box (No double form) */}
-              <div className="p-4 bg-amber-50/70 rounded-2xl border border-amber-200 space-y-2 text-xs text-amber-950">
-                <div className="flex items-center gap-2 font-bold text-amber-900">
-                  <Sparkles size={16} className="text-amber-600 shrink-0" />
-                  <span>Pengisian Data Diri & Pembayaran di Lynk.id</span>
+              {/* Highlighted Warning Box for Email Accuracy */}
+              <div className="p-4 bg-gradient-to-br from-red-50/90 via-amber-50/70 to-rose-50/80 rounded-2xl border-2 border-red-300/90 shadow-2xs space-y-2.5">
+                <div className="flex items-center gap-2 font-bold text-red-900 text-xs">
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-white text-[11px] font-black shrink-0">!</span>
+                  <span>PERIKSA DENGAN TELITI ALAMAT GMAIL ANDA</span>
                 </div>
-                <p className="text-[11px] leading-relaxed text-amber-900/90">
-                  Seluruh formulir (nama, email, no. telepon) dan pilihan pembayaran (QRIS, GoPay, OVO, ShopeePay, Virtual Account Bank) akan Anda isi dengan praktis langsung di halaman checkout resmi <strong>Lynk.id</strong>.
+                <p className="text-[11px] leading-relaxed text-slate-800">
+                  Seluruh formulir data dan pembayaran (QRIS / VA Bank / E-Wallet) diisi langsung di halaman resmi <strong>Lynk.id</strong>.
                 </p>
-                <div className="pt-1 border-t border-amber-200/60 text-[11px] font-semibold text-amber-900 flex items-start gap-1.5">
-                  <span className="text-amber-600">⚠️</span>
+                <div className="p-2.5 bg-white rounded-xl border border-red-200 text-[11px] text-slate-800 font-medium flex items-start gap-2">
+                  <span className="text-red-600 font-bold text-xs shrink-0">⚠️</span>
                   <span>
-                    <strong>PENTING:</strong> Pastikan Anda mengisi <strong>Email Gmail (@gmail.com)</strong> yang sama dengan akun platform ini ({session?.user?.email ? <span className="font-mono underline">{session.user.email}</span> : 'akun Google Anda'}) agar akses kuota langsung terbuka otomatis tanpa menunggu!
+                    <strong>Wajib gunakan Gmail aktif:</strong> Masukkan alamat Gmail yang sama dengan akun Google Anda {session?.user?.email ? <span className="font-mono font-bold text-red-600 underline">({session.user.email})</span> : '(@gmail.com)'}. Jika salah ketik email di Lynk.id, sistem tidak bisa mendeteksi akun Anda secara otomatis!
                   </span>
                 </div>
               </div>

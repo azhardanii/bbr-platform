@@ -9,6 +9,7 @@ import {
   TrendingUp, Brain, Target, Heart, Shield, SendHorizontal, RefreshCw,
   FileText, Wand2, Check, Copy, Flame, Coffee, HelpCircle, Layers, FileCheck
 } from "lucide-react";
+import PaymentCheckoutModal, { CheckoutTarget } from "@/components/payment/PaymentCheckoutModal";
 
 /* ─── Animated Counter Component ─── */
 function AnimatedCounter({ target, suffix = "", prefix = "" }: { target: number; suffix?: string; prefix?: string }) {
@@ -367,6 +368,7 @@ export default function Home() {
   const [activeFeatureTab, setActiveFeatureTab] = useState(0);
   const [selectedPersona, setSelectedPersona] = useState(0);
   const [activeTestimonial, setActiveTestimonial] = useState(0);
+  const [checkoutTarget, setCheckoutTarget] = useState<CheckoutTarget | null>(null);
 
   // Hero Quick Search Interactive State
   const [heroPrompt, setHeroPrompt] = useState("");
@@ -1797,15 +1799,14 @@ export default function Home() {
                 </div>
 
                 <div>
-                  <a
-                    href="https://lynk.id/belajarbarengroseline/s/lifetime-bbr"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-[var(--color-brand-600)] hover:bg-[var(--color-brand-700)] text-white font-extrabold text-sm shadow-lg shadow-[var(--color-brand-600)]/20 hover:scale-[1.01] active:scale-100 transition-all text-center"
+                  <button
+                    type="button"
+                    onClick={() => setCheckoutTarget({ type: 'membership', packageId: 'lifetime' })}
+                    className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-[var(--color-brand-600)] hover:bg-[var(--color-brand-700)] text-white font-extrabold text-sm shadow-lg shadow-[var(--color-brand-600)]/20 hover:scale-[1.01] active:scale-100 transition-all text-center cursor-pointer"
                   >
                     <span>Aktivasi Akses Penuh (Rp 199.000)</span>
                     <ArrowRight className="h-4 w-4" />
-                  </a>
+                  </button>
                 </div>
               </div>
             </div>
@@ -1873,9 +1874,7 @@ export default function Home() {
             <div className="mt-8 flex items-center justify-center gap-4 text-xs text-white/70">
               <span>🔒 Pembayaran Aman</span>
               <span>•</span>
-              <span>⚡ Akses Instan</span>
-              <span>•</span>
-              <span>🎓 Garansi 7 Hari</span>
+              <span>⚡ Akses Instan</span>              
             </div>
           </div>
         </section>
@@ -1959,6 +1958,15 @@ export default function Home() {
           </div>
         </div>
       </footer>
+
+      {/* Lynk.id Checkout Warning & Redirect Modal */}
+      {checkoutTarget && (
+        <PaymentCheckoutModal
+          isOpen={!!checkoutTarget}
+          target={checkoutTarget}
+          onClose={() => setCheckoutTarget(null)}
+        />
+      )}
     </div>
   );
 }
