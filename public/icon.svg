@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bbrGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#7B1D24" />
+      <stop offset="25%" stop-color="#991B1B" />
+      <stop offset="60%" stop-color="#DC2626" />
+      <stop offset="100%" stop-color="#E11D48" />
+    </linearGradient>
+    <linearGradient id="shineGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.32" />
+      <stop offset="45%" stop-color="#FFFFFF" stop-opacity="0.04" />
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.18" />
+    </linearGradient>
+    <filter id="shadowFilter" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="16" stdDeviation="20" flood-color="#7B1D24" flood-opacity="0.45" />
+    </filter>
+  </defs>
+
+  <!-- Base rounded squircle container -->
+  <rect x="24" y="24" width="464" height="464" rx="112" fill="url(#bbrGrad)" filter="url(#shadowFilter)" />
+  <rect x="24" y="24" width="464" height="464" rx="112" fill="url(#shineGrad)" />
+
+  <!-- Inner subtle border highlight -->
+  <rect x="36" y="36" width="440" height="440" rx="100" fill="none" stroke="#FFFFFF" stroke-opacity="0.25" stroke-width="6" />
+
+  <!-- Academic Star Accent Top Right -->
+  <path d="M 405 95 Q 405 125 435 125 Q 405 125 405 155 Q 405 125 375 125 Q 405 125 405 95 Z" fill="#FDE047" opacity="0.95" />
+
+  <!-- BBR Brand Typography -->
+  <text 
+    x="256" 
+    y="318" 
+    text-anchor="middle" 
+    fill="#FFFFFF" 
+    font-family="system-ui, -apple-system, 'SF Pro Display', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" 
+    font-size="192" 
+    font-weight="900" 
+    letter-spacing="4">BBR</text>
+
+  <!-- Decorative baseline dots -->
+  <circle cx="256" cy="388" r="9" fill="#FDE047" />
+  <circle cx="224" cy="388" r="5" fill="#FFFFFF" opacity="0.75" />
+  <circle cx="288" cy="388" r="5" fill="#FFFFFF" opacity="0.75" />
+</svg>
