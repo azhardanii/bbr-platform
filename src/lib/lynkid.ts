@@ -100,7 +100,7 @@ export function verifyLynkSignature(params: {
     params.secretKey ||
     process.env.LYNK_SECRET_KEY ||
     process.env.LYNKID_SECRET ||
-    "9RoZiBpCoJDL9AUC7spzw9ZjDsjeQmCb";
+    "4Md3517SUUgAqNuxMFIJ8kB2paXsZHQk";
 
   const signatureString = `${params.grandTotal}${params.refId}${params.messageId}${secretKey}`;
   const calculatedHash = crypto.createHash("sha256").update(signatureString).digest("hex");
