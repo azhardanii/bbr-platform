@@ -5,28 +5,28 @@ import { checkServerQuota, consumeServerQuota, logAiUsage } from "@/lib/quotaSer
 export const maxDuration = 60;
 
 export async function POST(req: Request) {
-  // Auth
-  const session = await auth();
-  if (!session?.user?.id) {
-    return new Response(
-      JSON.stringify({ error: "Silakan login terlebih dahulu." }),
-      { status: 401, headers: { "Content-Type": "application/json" } }
-    );
-  }
-
-  const userId = session.user.id;
-  const role = ((session.user as any).role || "free") as "free" | "member" | "admin";
-
-  // Quota check — bibliometrik uses sitasi quota
-  const quotaCheck = await checkServerQuota(userId, role, "sitasi");
-  if (!quotaCheck.allowed) {
-    return new Response(
-      JSON.stringify({ error: "Kuota Bibliometrik Anda sudah habis. Silakan upgrade atau beli add-on.", quota: quotaCheck }),
-      { status: 429, headers: { "Content-Type": "application/json" } }
-    );
-  }
-
   try {
+    // Auth
+    const session = await auth();
+    if (!session?.user?.id) {
+      return new Response(
+        JSON.stringify({ error: "Silakan login terlebih dahulu." }),
+        { status: 401, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    const userId = session.user.id;
+    const role = ((session.user as any).role || "free") as "free" | "member" | "admin";
+
+    // Quota check — bibliometrik uses sitasi quota
+    const quotaCheck = await checkServerQuota(userId, role, "sitasi");
+    if (!quotaCheck.allowed) {
+      return new Response(
+        JSON.stringify({ error: "Kuota Bibliometrik Anda sudah habis. Silakan upgrade atau beli add-on.", quota: quotaCheck }),
+        { status: 429, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
     const { prompt } = await req.json();
 
     const systemInstruction = `Kamu adalah peneliti senior (Professor) yang ahli dalam bibliometrik, systematic literature review, dan pemetaan trend penelitian.
@@ -51,25 +51,47 @@ Syarat Graph (Penting agar Visualisasi Tidak Error):
 - Pastikan setiap 'source' dan 'target' pada link PERSIS sama dengan salah satu 'id' di array nodes.`;
 
     const interaction = await ai.interactions.create({
-      model: MODELS.REASONING,
+      model: MODELS.FAST_LIGHT,
       system_instruction: systemInstruction,
       input: prompt,
     });
 
     const textOutput = interaction.output_text || "{}";
-    const cleanJson = textOutput.replace(/```json/g, "").replace(/```/g, "").trim();
+    let jsonResult: any = null;
+    const clean = textOutput.replace(/```json/gi, "").replace(/```/g, "").trim();
 
-    // Consume quota + log
+    try {
+      jsonResult = JSON.parse(clean);
+    } catch (_) {
+      const firstBrace = clean.indexOf("{");
+      const lastBrace = clean.lastIndexOf("}");
+      if (firstBrace !== -1 && lastBrace > firstBrace) {
+        try {
+          jsonResult = JSON.parse(clean.substring(firstBrace, lastBrace + 1));
+        } catch (_) {}
+      }
+    }
+
+    if (!jsonResult || typeof jsonResult !== "object" || !jsonResult.analysis) {
+      console.warn("[/api/ai/bibliometrik] Failed to parse JSON graph analysis:", textOutput);
+      return new Response(
+        JSON.stringify({ error: "Sistem gagal mengurai data analisis bibliometrik AI. Silakan coba kembali." }),
+        { status: 502, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    // Consume quota + log (fire-and-forget)
     consumeServerQuota(userId, role, "sitasi").catch(console.error);
-    logAiUsage({ userId, feature: "sitasi", model: MODELS.REASONING }).catch(console.error);
+    logAiUsage({ userId, feature: "sitasi", model: MODELS.FAST_LIGHT }).catch(console.error);
 
-    return new Response(cleanJson, {
+    return new Response(JSON.stringify(jsonResult), {
+      status: 200,
       headers: { "Content-Type": "application/json" },
     });
-  } catch (error) {
-    console.error("AI Error:", error);
+  } catch (error: any) {
+    console.error("AI Error in /api/ai/bibliometrik:", error);
     return new Response(
-      JSON.stringify({ error: "Gagal menghasilkan respons AI. Silakan coba lagi." }),
+      JSON.stringify({ error: error?.message || "Gagal menghasilkan respons AI. Silakan coba lagi." }),
       { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }

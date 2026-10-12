@@ -73,19 +73,55 @@ Mohon bantu saya merumuskan 3 alternatif judul ${labelLower} yang menarik, akade
 **Preferensi Metode:** ${formData.metode}`;
 
     try {
-      const res = await fetch("/api/ai/judul", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: generatedPrompt, jenjang: labelLower })
-      });
+      let data: any = null;
+      let lastErrorMessage = "Gagal mengambil data dari server";
+
+      // Automatic retry loop: attempt up to 2 times for transient network/server hiccups
+      for (let attempt = 1; attempt <= 2; attempt++) {
+        try {
+          const res = await fetch("/api/ai/judul", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ prompt: generatedPrompt, jenjang: labelLower })
+          });
+          
+          if (res.ok) {
+            data = await res.json();
+            break;
+          }
+
+          // Read server error details
+          let serverDetail = "";
+          try {
+            const errBody = await res.json();
+            serverDetail = errBody.error || errBody.message || "";
+          } catch (_) {}
+
+          if (res.status === 401) {
+            lastErrorMessage = serverDetail || "Sesi login Anda telah berakhir. Silakan muat ulang halaman dan login kembali.";
+            break; // Don't retry on auth error
+          } else if (res.status === 429) {
+            lastErrorMessage = serverDetail || "Kuota penggunaan Judul Finder Anda sudah habis. Silakan periksa paket atau hubungi admin.";
+            break; // Don't retry on quota error
+          } else if (res.status === 504) {
+            lastErrorMessage = "Server AI membutuhkan waktu lebih lama dari biasanya (Timeout). Sedang mencoba kembali...";
+          } else {
+            lastErrorMessage = serverDetail || `Server mengembalikan status ${res.status}. Silakan coba lagi.`;
+          }
+        } catch (fetchErr: any) {
+          lastErrorMessage = fetchErr?.message || "Gagal terhubung ke server. Periksa koneksi internet Anda.";
+        }
+
+        if (attempt < 2) {
+          // Wait 1.5s before automatic retry
+          await new Promise((resolve) => setTimeout(resolve, 1500));
+        }
+      }
       
-      if (!res.ok) throw new Error("Gagal mengambil data dari server");
-      
-      const data = await res.json();
       if (Array.isArray(data) && data.length > 0) {
         setResults(data);
       } else {
-        throw new Error("Format respons tidak valid");
+        throw new Error(lastErrorMessage || "Format respons tidak valid dari AI");
       }
     } catch (err: any) {
       setError(err.message || "Terjadi kesalahan saat memuat respons AI. Silakan coba lagi.");
@@ -210,8 +246,19 @@ Mohon bantu saya merumuskan 3 alternatif judul ${labelLower} yang menarik, akade
       </div>
 
       {error && (
-        <div className="bg-red-50 text-red-600 p-4 rounded-xl border border-red-200 text-sm">
-          ⚠️ {error}
+        <div className="bg-red-50 text-red-700 p-4 rounded-xl border border-red-200 text-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+          <div className="flex items-center gap-2">
+            <span className="text-base">⚠️</span>
+            <span>{error}</span>
+          </div>
+          <button
+            type="button"
+            onClick={handleGenerate}
+            disabled={isLoading}
+            className="px-3.5 py-1.5 bg-red-600 hover:bg-red-700 text-white font-medium text-xs rounded-lg transition-colors whitespace-nowrap self-end sm:self-auto disabled:opacity-50"
+          >
+            Coba Lagi
+          </button>
         </div>
       )}
 

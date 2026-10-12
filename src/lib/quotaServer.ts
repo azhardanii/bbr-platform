@@ -73,25 +73,37 @@ export async function checkServerQuota(
 
   const baseLimit = ROLE_LIMITS[role][feature];
 
-  // Get or create quota row for this user+feature
-  const quotaRow = await prisma.userQuota.upsert({
-    where: { user_id_feature: { user_id: userId, feature } },
-    create: { user_id: userId, feature, used: 0, addon_bonus: 0 },
-    update: {}, // no-op; just fetch
-  });
+  try {
+    // Get or create quota row for this user+feature
+    const quotaRow = await prisma.userQuota.upsert({
+      where: { user_id_feature: { user_id: userId, feature } },
+      create: { user_id: userId, feature, used: 0, addon_bonus: 0 },
+      update: {}, // no-op; just fetch
+    });
 
-  const effectiveLimit = baseLimit + (quotaRow.addon_bonus ?? 0);
-  const used = quotaRow.used;
-  const remaining = Math.max(0, effectiveLimit - used);
+    const effectiveLimit = baseLimit + (quotaRow.addon_bonus ?? 0);
+    const used = quotaRow.used;
+    const remaining = Math.max(0, effectiveLimit - used);
 
-  return {
-    allowed: remaining > 0,
-    used,
-    limit: effectiveLimit,
-    remaining,
-    role,
-    feature,
-  };
+    return {
+      allowed: remaining > 0,
+      used,
+      limit: effectiveLimit,
+      remaining,
+      role,
+      feature,
+    };
+  } catch (dbErr) {
+    console.warn("[checkServerQuota] Database unreachable, allowing request gracefully:", dbErr);
+    return {
+      allowed: true,
+      used: 0,
+      limit: baseLimit,
+      remaining: baseLimit,
+      role,
+      feature,
+    };
+  }
 }
 
 /**
@@ -106,19 +118,24 @@ export async function consumeServerQuota(
   // Admin = unlimited, never consume
   if (role === "admin") return true;
 
-  const check = await checkServerQuota(userId, role, feature);
-  if (!check.allowed) return false;
+  try {
+    const check = await checkServerQuota(userId, role, feature);
+    if (!check.allowed) return false;
 
-  await prisma.userQuota.upsert({
-    where: { user_id_feature: { user_id: userId, feature } },
-    create: { user_id: userId, feature, used: 1, addon_bonus: 0 },
-    update: {
-      used: { increment: 1 },
-      updated_at: new Date(),
-    },
-  });
+    await prisma.userQuota.upsert({
+      where: { user_id_feature: { user_id: userId, feature } },
+      create: { user_id: userId, feature, used: 1, addon_bonus: 0 },
+      update: {
+        used: { increment: 1 },
+        updated_at: new Date(),
+      },
+    });
 
-  return true;
+    return true;
+  } catch (err) {
+    console.warn("[consumeServerQuota] Database unreachable, ignoring:", err);
+    return true;
+  }
 }
 
 /**

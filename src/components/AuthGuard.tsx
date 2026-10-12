@@ -32,7 +32,7 @@ export default function AuthGuard() {
 
     // 3. PopState event handler
     const handlePopState = () => {
-      if (status === "unauthenticated") {
+      if ((status as string) === "unauthenticated") {
         window.location.replace("/login?logout=1");
       }
     };

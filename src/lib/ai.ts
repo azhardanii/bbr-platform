@@ -3,31 +3,29 @@ import { GoogleGenAI } from "@google/genai";
 // Model constants mapped strictly to available models with quota optimization
 export const MODELS = {
   // Heavy reasoning & Academic Depth (Skripsi/Tesis Reasoning, Perluas, Sidang, Bab Analysis)
-  ACADEMIC_DEEP: "gemini-3.7-flash",
+  ACADEMIC_DEEP: "gemini-3.5-flash-lite",
   
   // High quality academic text generation & restructuring (Parafrase, Analisis Kritis)
-  ACADEMIC_PARAPHRASE: "gemini-3.5-flash",
+  ACADEMIC_PARAPHRASE: "gemini-3.5-flash-lite",
   
   // Fast, accurate & high-quota (500/day) for syntactic checking, EYD, typo, and summarization
   FAST_LIGHT: "gemini-3.5-flash-lite",
   FAST_LITE_FALLBACK: "gemini-3.1-flash-lite",
   
   // Legacy aliases for compatibility across platform tools
-  REASONING: "gemini-3.7-flash",
-  CREATIVE: "gemini-3.5-flash",
+  REASONING: "gemini-3.5-flash-lite",
+  CREATIVE: "gemini-3.5-flash-lite",
   FAST: "gemini-3.5-flash-lite",
   EMBEDDING: "gemini-embedding-2",
 } as const;
 
-// Hierarchy of models for automatic fallback cascade
+// Hierarchy of verified models for automatic fallback cascade
 const MODEL_FALLBACK_CHAINS: Record<string, string[]> = {
-  "gemini-3.7-flash": ["gemini-3.7-flash", "gemini-3.6-flash", "gemini-3.5-flash", "gemini-3-flash", "gemini-2-flash", "gemini-3.5-flash-lite", "gemini-3.1-flash-lite"],
-  "gemini-3.6-flash": ["gemini-3.6-flash", "gemini-3.5-flash", "gemini-3-flash", "gemini-2-flash", "gemini-3.5-flash-lite", "gemini-3.1-flash-lite"],
-  "gemini-3.5-flash": ["gemini-3.5-flash", "gemini-3.6-flash", "gemini-3-flash", "gemini-2-flash", "gemini-3.5-flash-lite", "gemini-3.1-flash-lite"],
-  "gemini-3-flash": ["gemini-3-flash", "gemini-3.5-flash", "gemini-2-flash", "gemini-3.5-flash-lite", "gemini-3.1-flash-lite"],
-  "gemini-2-flash": ["gemini-2-flash", "gemini-3.5-flash-lite", "gemini-3.1-flash-lite"],
-  "gemini-3.5-flash-lite": ["gemini-3.5-flash-lite", "gemini-3.1-flash-lite", "gemini-3.5-flash"],
-  "gemini-3.1-flash-lite": ["gemini-3.1-flash-lite", "gemini-3.5-flash-lite", "gemini-3.5-flash"],
+  "gemini-3.5-flash-lite": ["gemini-3.5-flash-lite", "gemini-3.1-flash-lite", "gemini-3.8-flash", "gemini-3.7-flash"],
+  "gemini-3.1-flash-lite": ["gemini-3.1-flash-lite", "gemini-3.5-flash-lite", "gemini-3.8-flash", "gemini-3.7-flash"],
+  "gemini-3.8-flash": ["gemini-3.8-flash", "gemini-3.5-flash-lite", "gemini-3.1-flash-lite", "gemini-3.7-flash"],
+  "gemini-3.7-flash": ["gemini-3.7-flash", "gemini-3.5-flash-lite", "gemini-3.1-flash-lite", "gemini-3.8-flash"],
+  "gemini-3.5-flash": ["gemini-3.5-flash-lite", "gemini-3.1-flash-lite", "gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.5-flash"],
 };
 
 // Initialize the GoogleGenAI clients with primary & backup keys
@@ -51,18 +49,31 @@ const executeWithFallback = async (options: any) => {
     return (
       status === 429 ||
       status === 500 ||
+      status === 502 ||
       status === 503 ||
+      status === 504 ||
+      status === 404 ||
+      status === 400 ||
       msg.includes("429") ||
       msg.includes("quota") ||
       msg.includes("resource_exhausted") ||
       msg.includes("rate limit") ||
       msg.includes("deadline") ||
-      msg.includes("overloaded")
+      msg.includes("overloaded") ||
+      msg.includes("fetch failed") ||
+      msg.includes("timeout") ||
+      msg.includes("econnreset") ||
+      msg.includes("connection closed")
     );
   };
 
-  const requestedModel = options.model || MODELS.ACADEMIC_DEEP;
-  const fallbackChain = MODEL_FALLBACK_CHAINS[requestedModel] || [requestedModel, "gemini-3.5-flash", "gemini-3.5-flash-lite"];
+  const requestedModel = options.model || MODELS.FAST_LIGHT;
+  const fallbackChain = MODEL_FALLBACK_CHAINS[requestedModel] || [
+    requestedModel,
+    "gemini-3.5-flash-lite",
+    "gemini-3.1-flash-lite",
+    "gemini-3.8-flash",
+  ];
 
   let lastError: any = null;
 
@@ -85,13 +96,8 @@ const executeWithFallback = async (options: any) => {
         lastError = err;
         console.warn(`[AI Engine Error] Model ${targetModel} on ${client.name} failed:`, err?.message || err);
 
-        if (isRetryableError(err)) {
-          // Continue to next client or fallback model in queue
-          continue;
-        } else {
-          // If non-retryable invalid argument, try next key before bailing
-          continue;
-        }
+        // Always continue trying other keys / models in chain
+        continue;
       }
     }
   }
